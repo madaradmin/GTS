@@ -53,3 +53,4 @@ class StoreAttachmentRequest extends FormRequest
         ];
     }
 }
+

@@ -68,3 +68,4 @@ class IncidentAttachmentController extends Controller
         return $this->fileStorageService->download($attachment);
     }
 }
+

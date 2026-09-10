@@ -272,3 +272,4 @@ class IncidentAttachmentTest extends TestCase
             ->assertForbidden();
     }
 }
+

@@ -260,3 +260,4 @@ php artisan test
 ---
 
 **STOPPING.** Esperando la instrucción explícita del usuario: `"EJECUTA EL PASO 28"`.
+

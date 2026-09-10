@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\IncidentAttachmentController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\ProfileController;
@@ -11,9 +12,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Módulo de Incidencias Operativas (APOC / GTS)
     Route::get('/incidencias', [IncidentController::class, 'index'])->name('incidents.index');
