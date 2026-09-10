@@ -295,6 +295,51 @@ class IncidentService
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
     }
+
+    /**
+     * Da el visto bueno operacional y cierra definitivamente la incidencia (transición a CERRADA).
+     *
+     * @param Incident $incident Incidencia en estado RESUELTA
+     * @param User $closer Operador APOC o Administrador que otorga el cierre
+     * @param string|null $comment Observaciones de conformidad o cierre operacional (opcional)
+     * @return Incident
+     */
+    public function closeIncident(Incident $incident, User $closer, ?string $comment = null): Incident
+    {
+        return DB::transaction(function () use ($incident, $closer, $comment) {
+            $previousStatus = $incident->status->name;
+            $closedStatus = Status::where('code', 'CERRADA')->firstOrFail();
+
+            // 1. Transicionar estado a CERRADA y registrar timestamp final (RN-02)
+            $incident->status_id = $closedStatus->id;
+            $incident->closed_at = now();
+            $incident->save();
+
+            // 2. Auditoría inmutable de cambio de estado a CERRADA
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $closer->id,
+                action: 'CAMBIO_ESTADO',
+                fieldName: 'status_id',
+                oldValue: $previousStatus,
+                newValue: $closedStatus->name,
+                comment: $comment ?? "Visto bueno operacional otorgado por {$closer->name} (APOC). Incidencia cerrada definitivamente."
+            );
+
+            // 3. Auditoría inmutable de cierre definitivo del expediente (RF-05 / RN-02 / RN-04)
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $closer->id,
+                action: 'CERRADA',
+                fieldName: 'closed_at',
+                oldValue: null,
+                newValue: $incident->closed_at->toIso8601String(),
+                comment: $comment ?? "Expediente archivado en modo inmutable con conformidad total de servicio."
+            );
+
+            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
+        });
+    }
 }
 
 

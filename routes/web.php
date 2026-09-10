@@ -23,6 +23,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/incidencias/{incident}/notas', [IncidentController::class, 'addNote'])->name('incidents.add-note');
     Route::post('/incidencias/{incident}/resolver', [IncidentController::class, 'resolve'])->name('incidents.resolve');
     Route::post('/incidencias/{incident}/rechazar-solucion', [IncidentController::class, 'rejectResolution'])->name('incidents.reject-resolution');
+    Route::post('/incidencias/{incident}/cerrar', [IncidentController::class, 'close'])->name('incidents.close');
 });
 
 Route::middleware('auth')->group(function () {

@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6" x-data="{ showAssignModal: false, showResolveModal: false, showRejectModal: false }">
+    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6" x-data="{ showAssignModal: false, showResolveModal: false, showRejectModal: false, showCloseModal: false }">
         
         <!-- Notificaciones Flash -->
         @if (session('success'))
@@ -131,6 +131,18 @@
                     </button>
                 @endcan
 
+                <!-- Botón: Dar Visto Bueno y Cerrar (Paso 25 - APOC) -->
+                @can('close', $incident)
+                    <button
+                        type="button"
+                        @click="showCloseModal = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm transition-all"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">verified</span>
+                        <span>Dar VoBo y Cerrar</span>
+                    </button>
+                @endcan
+
                 @can('create', App\Models\Incident::class)
                     <a
                         href="{{ route('incidents.create') }}"
@@ -142,6 +154,21 @@
                 @endcan
             </div>
         </div>
+
+        <!-- Banner de Incidencia Cerrada Definitiva (Inmutable - Paso 25) -->
+        @if ($incident->status->code === 'CERRADA')
+            <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-700/60 text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+                <div class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
+                    <span class="material-symbols-outlined text-slate-400 text-[22px]">lock</span>
+                    <span>Expediente Cerrado y Archivado — Modo de Solo Lectura Inmutable</span>
+                    <span class="text-outline font-normal hidden md:inline">• Visto Bueno otorgado por APOC</span>
+                </div>
+                <div class="font-mono text-xs text-outline flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">task_alt</span>
+                    <span>Cierre: {{ $incident->closed_at?->format('d/m/Y H:i') ?? 'N/D' }} hrs</span>
+                </div>
+            </div>
+        @endif
 
         <!-- Banner de Observación de Rechazo Previo (Paso 24) -->
         @if ($incident->rejection_reason && $incident->status->code === 'EN_ATENCION')
@@ -231,9 +258,9 @@
                 </div>
 
                 <!-- Paso 5: Cerrada -->
-                <div class="p-3 rounded-lg flex items-center gap-3 {{ $sOrder === 5 ? 'bg-surface-container-low border border-border-subtle' : 'opacity-40' }}">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs {{ $sOrder === 5 ? 'bg-slate-500/20 text-slate-300' : 'bg-surface-container-high text-outline' }}">
-                        @if($sOrder === 5) <span class="material-symbols-outlined text-[18px]">task_alt</span> @else 5 @endif
+                <div class="p-3 rounded-lg flex items-center gap-3 {{ $sOrder === 5 ? 'bg-surface-container-low border border-primary/30' : 'opacity-40' }}">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs {{ $sOrder === 5 ? 'bg-primary/20 text-primary ring-2 ring-primary/40' : 'bg-surface-container-high text-outline' }}">
+                        @if($sOrder === 5) <span class="material-symbols-outlined text-[18px]">verified</span> @else 5 @endif
                     </div>
                     <div class="flex flex-col min-w-0">
                         <span class="font-semibold text-xs text-on-surface">5. Cerrada</span>
@@ -381,11 +408,12 @@
                             <div class="relative flex flex-col gap-1">
                                 <!-- Punto de la línea de tiempo -->
                                 <div class="absolute -left-[31px] top-0.5 w-3 h-3 rounded-full bg-surface-base border-2
-                                    @if($h->action === 'NOTA_TECNICA') border-amber-400 bg-amber-400/30
-                                    @elseif($h->action === 'RESUELTA') border-emerald-400 bg-emerald-400/30
-                                    @elseif($h->action === 'RECHAZO_SOLUCION') border-rose-500 bg-rose-500/30
-                                    @elseif($h->action === 'CAMBIO_ESTADO') border-blue-400
-                                    @else border-primary @endif">
+                                     @if($h->action === 'NOTA_TECNICA') border-amber-400 bg-amber-400/30
+                                     @elseif($h->action === 'RESUELTA') border-emerald-400 bg-emerald-400/30
+                                     @elseif($h->action === 'RECHAZO_SOLUCION') border-rose-500 bg-rose-500/30
+                                     @elseif($h->action === 'CERRADA') border-primary bg-primary/30
+                                     @elseif($h->action === 'CAMBIO_ESTADO') border-blue-400
+                                     @else border-primary @endif">
                                 </div>
 
                                 <div class="flex items-center gap-2 flex-wrap text-xs">
@@ -393,6 +421,7 @@
                                         @if($h->action === 'NOTA_TECNICA') bg-amber-500/15 text-amber-400 border border-amber-500/30
                                         @elseif($h->action === 'RESUELTA') bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
                                         @elseif($h->action === 'RECHAZO_SOLUCION') bg-rose-500/15 text-rose-400 border border-rose-500/30
+                                        @elseif($h->action === 'CERRADA') bg-primary/15 text-primary border border-primary/30
                                         @elseif($h->action === 'CAMBIO_ESTADO') bg-blue-500/15 text-blue-400 border border-blue-500/30
                                         @elseif($h->action === 'ASIGNADA' || $h->action === 'REASIGNADA') bg-purple-500/15 text-purple-400 border border-purple-500/30
                                         @else bg-surface-container-high text-primary border border-border-subtle @endif">
@@ -425,6 +454,14 @@
                                         <div class="flex items-center gap-1.5 text-rose-400 font-semibold text-[11px] mb-1">
                                             <span class="material-symbols-outlined text-[15px]">cancel</span>
                                             <span>Motivo de Rechazo por APOC:</span>
+                                        </div>
+                                        <p class="whitespace-pre-line text-on-surface-variant font-sans">{{ $h->comment }}</p>
+                                    </div>
+                                @elseif($h->action === 'CERRADA')
+                                    <div class="p-3.5 bg-primary/5 rounded-xl border border-primary/20 text-xs text-on-surface leading-relaxed mt-1">
+                                        <div class="flex items-center gap-1.5 text-primary font-semibold text-[11px] mb-1">
+                                            <span class="material-symbols-outlined text-[15px]">verified</span>
+                                            <span>Conformidad Operacional y Cierre Formal (APOC):</span>
                                         </div>
                                         <p class="whitespace-pre-line text-on-surface-variant font-sans">{{ $h->comment }}</p>
                                     </div>
@@ -514,6 +551,18 @@
                                 {{ $incident->assigned_at ? $incident->assigned_at->format('Y-m-d H:i:s') : 'Pendiente' }}
                             </dd>
                         </div>
+                        @if($incident->resolved_at)
+                            <div class="flex justify-between py-1.5 border-b border-border-subtle/50">
+                                <dt class="text-outline">Fecha Resolución:</dt>
+                                <dd class="text-emerald-400 font-mono">{{ $incident->resolved_at->format('Y-m-d H:i:s') }}</dd>
+                            </div>
+                        @endif
+                        @if($incident->closed_at)
+                            <div class="flex justify-between py-1.5 border-b border-border-subtle/50">
+                                <dt class="text-outline">Fecha Cierre:</dt>
+                                <dd class="text-primary font-mono font-semibold">{{ $incident->closed_at->format('Y-m-d H:i:s') }}</dd>
+                            </div>
+                        @endif
                         <div class="flex justify-between py-1.5">
                             <dt class="text-outline">SLA Estimado:</dt>
                             <dd class="text-primary font-mono font-semibold">{{ $incident->priority->sla_minutes }} minutos</dd>
@@ -762,6 +811,94 @@
                         >
                             <span class="material-symbols-outlined text-[18px]">replay</span>
                             <span>Confirmar Rechazo y Reabrir Atención</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 7. Modal de Visto Bueno y Cierre Definitivo por APOC (Paso 25) -->
+        <div
+            x-show="showCloseModal"
+            x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-base/80 backdrop-blur-sm"
+            @keydown.escape.window="showCloseModal = false"
+        >
+            <div
+                class="bg-surface-subtle border border-border-subtle w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+                @click.outside="showCloseModal = false"
+            >
+                <div class="flex items-center justify-between pb-2 border-b border-border-subtle">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[22px]">verified</span>
+                        <h3 class="text-base font-bold text-on-surface">
+                            Conformidad y Cierre de Incidencia
+                        </h3>
+                    </div>
+                    <button
+                        type="button"
+                        @click="showCloseModal = false"
+                        class="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                <form method="POST" action="{{ route('incidents.close', $incident) }}" class="flex flex-col gap-4">
+                    @csrf
+
+                    <div class="p-3.5 rounded-xl bg-surface-container-low border border-border-subtle flex flex-col gap-2 text-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-outline">Folio de Expediente:</span>
+                            <span class="font-mono font-bold text-primary text-sm">{{ $incident->folio }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-outline">Especialista GTS:</span>
+                            <span class="font-semibold text-on-surface">{{ $incident->assignedTo?->name ?? 'GTS de Guardia' }}</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-outline">Subsistema:</span>
+                            <span class="text-on-surface">{{ $incident->category->name }}</span>
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-primary/10 rounded-xl border border-primary/20 text-xs text-primary-200 flex items-start gap-2.5">
+                        <span class="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">info</span>
+                        <p class="leading-relaxed text-[11px] text-on-surface-variant">
+                            Al confirmar, el expediente pasará al estado final inmutable <strong class="text-on-surface">CERRADA</strong>. Se archivará la solución técnica documentada y ningún usuario podrá reactivar ni alterar este registro.
+                        </p>
+                    </div>
+
+                    <!-- Observaciones de Conformidad / Cierre -->
+                    <div class="flex flex-col gap-1.5">
+                        <label for="modal_close_comment" class="text-xs font-semibold text-on-surface">
+                            Observaciones de Conformidad y Servicio <span class="text-outline font-normal">(Opcional)</span>
+                        </label>
+                        <textarea
+                            id="modal_close_comment"
+                            name="comment"
+                            rows="3"
+                            maxlength="1000"
+                            placeholder="Detalles de la validación: servicio verificado en sala/pista, pruebas de pasajeros exitosas, visto bueno otorgado por APOC..."
+                            class="w-full px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-primary/50 transition-colors shadow-inner resize-none"
+                        ></textarea>
+                    </div>
+
+                    <!-- Botones de Acción Modal -->
+                    <div class="flex items-center justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            @click="showCloseModal = false"
+                            class="px-4 py-2 bg-surface-container-high hover:bg-surface-container text-on-surface font-semibold text-xs rounded-xl border border-border-subtle transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">verified</span>
+                            <span>Confirmar Cierre y Conformidad</span>
                         </button>
                     </div>
                 </form>

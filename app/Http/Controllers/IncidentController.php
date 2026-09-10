@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AddNoteRequest;
 use App\Http\Requests\AssignIncidentRequest;
+use App\Http\Requests\CloseIncidentRequest;
 use App\Http\Requests\RejectResolutionRequest;
 use App\Http\Requests\ResolveIncidentRequest;
 use App\Http\Requests\StoreIncidentRequest;
@@ -217,5 +218,22 @@ class IncidentController extends Controller
 
         return redirect()->route('incidents.show', $incident->folio)
             ->with('success', "Solución de la incidencia {$incident->folio} rechazada. El expediente ha retornado al estado EN ATENCIÓN para nuevo diagnóstico por GTS.");
+    }
+
+    /**
+     * Valida el restablecimiento de servicio, otorga el visto bueno y cierra definitivamente el ticket (RF-05 / RN-02).
+     */
+    public function close(CloseIncidentRequest $request, Incident $incident): RedirectResponse
+    {
+        Gate::authorize('close', $incident);
+
+        $this->incidentService->closeIncident(
+            incident: $incident,
+            closer: $request->user(),
+            comment: $request->validated('comment')
+        );
+
+        return redirect()->route('incidents.show', $incident->folio)
+            ->with('success', "Incidencia {$incident->folio} cerrada definitivamente con visto bueno de APOC. Expediente archivado en modo inmutable.");
     }
 }

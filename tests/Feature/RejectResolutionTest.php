@@ -162,3 +162,4 @@ class RejectResolutionTest extends TestCase
         $this->assertNull($incident->rejection_reason);
     }
 }
+

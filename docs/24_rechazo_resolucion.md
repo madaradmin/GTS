@@ -186,3 +186,4 @@ php artisan test
 * [x] Suite completa de pruebas (88 tests, 288 aserciones) ejecutada en verde.
 * [x] Base de datos de desarrollo re-sembrada con `php artisan db:seed`.
 * [x] Commit Git efectuado con mensaje estandarizado.
+
