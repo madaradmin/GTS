@@ -37,3 +37,4 @@ $incident = Incident::factory()->enAtencion($gtsUser)->create();
 // 3. Crear una incidencia resuelta con solución técnica documentada
 $resolvedIncident = Incident::factory()->resuelta('Reemplazo de inyector PoE')->create();
 ```
+

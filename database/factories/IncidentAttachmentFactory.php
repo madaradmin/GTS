@@ -35,3 +35,4 @@ class IncidentAttachmentFactory extends Factory
         ];
     }
 }
+

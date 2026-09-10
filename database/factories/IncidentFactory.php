@@ -157,3 +157,4 @@ class IncidentFactory extends Factory
         ]);
     }
 }
+

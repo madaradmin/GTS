@@ -89,4 +89,29 @@ class User extends Authenticatable
 
         return in_array($this->role->slug, $roles, true);
     }
+
+    /**
+     * Comprueba si el usuario tiene rol APOC.
+     */
+    public function isApoc(): bool
+    {
+        return $this->hasRole('apoc');
+    }
+
+    /**
+     * Comprueba si el usuario tiene rol GTS.
+     */
+    public function isGts(): bool
+    {
+        return $this->hasRole('gts');
+    }
+
+    /**
+     * Comprueba si el usuario tiene rol Administrador.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
 }
+

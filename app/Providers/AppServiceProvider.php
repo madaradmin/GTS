@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Administrador tiene acceso universal a todas las habilidades
+        Gate::before(function (User $user, string $ability) {
+            if ($user->isAdmin()) {
+                return true;
+            }
+        });
+
+        // Gates institucionales para vistas y navegación
+        Gate::define('access-apoc', fn (User $user) => $user->isApoc() || $user->isAdmin());
+        Gate::define('access-gts', fn (User $user) => $user->isGts() || $user->isAdmin());
+        Gate::define('access-admin', fn (User $user) => $user->isAdmin());
     }
 }
+
