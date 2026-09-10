@@ -43,3 +43,4 @@ Se ejecutó la suite `tests/Feature/RoleMiddlewareTest.php`:
 * `test_admin_has_universal_access_to_all_role_routes`: **PASÓ**
 
 Total: 5 pruebas ejecutadas, 16 aserciones superadas al 100%.
+

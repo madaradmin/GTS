@@ -21,8 +21,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Administrador tiene acceso universal a todas las habilidades
+        // Regla aeronáutica: La eliminación de incidencias está estrictamente prohibida para todos
         Gate::before(function (User $user, string $ability) {
+            if ($ability === 'delete') {
+                return false;
+            }
+
             if ($user->isAdmin()) {
                 return true;
             }
