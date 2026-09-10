@@ -70,3 +70,4 @@ class StoreIncidentRequest extends FormRequest
         ];
     }
 }
+

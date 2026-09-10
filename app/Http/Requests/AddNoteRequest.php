@@ -49,3 +49,4 @@ class AddNoteRequest extends FormRequest
         ];
     }
 }
+

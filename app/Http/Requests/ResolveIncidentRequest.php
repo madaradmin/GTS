@@ -49,3 +49,4 @@ class ResolveIncidentRequest extends FormRequest
         ];
     }
 }
+

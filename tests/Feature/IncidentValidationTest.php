@@ -103,3 +103,4 @@ class IncidentValidationTest extends TestCase
         $this->assertFalse($v2->fails());
     }
 }
+

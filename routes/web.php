@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -7,9 +8,16 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', function () {
+        return view('dashboard');
+    })->name('dashboard');
+
+    // Módulo de Incidencias Operativas (APOC / GTS)
+    Route::get('/incidencias/nueva', [IncidentController::class, 'create'])->name('incidents.create');
+    Route::post('/incidencias', [IncidentController::class, 'store'])->name('incidents.store');
+    Route::get('/incidencias/{folio}', [IncidentController::class, 'show'])->name('incidents.show');
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

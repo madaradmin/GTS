@@ -49,3 +49,4 @@ class RejectResolutionRequest extends FormRequest
         ];
     }
 }
+
