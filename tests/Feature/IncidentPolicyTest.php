@@ -74,3 +74,4 @@ class IncidentPolicyTest extends TestCase
         $this->assertFalse(Gate::forUser($adminUser)->allows('delete', $incident));
     }
 }
+

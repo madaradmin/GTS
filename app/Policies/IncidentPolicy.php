@@ -135,3 +135,4 @@ class IncidentPolicy
         return false;
     }
 }
+

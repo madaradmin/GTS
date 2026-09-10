@@ -36,3 +36,4 @@ Se ejecutó la suite `tests/Feature/IncidentPolicyTest.php`:
 * `test_deletion_is_strictly_prohibited_for_all_users`: **PASÓ**
 
 Total acumulado de pruebas de seguridad: 11 pruebas, 27 aserciones superadas con éxito.
+
