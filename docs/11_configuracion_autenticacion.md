@@ -42,3 +42,4 @@ Se extendió [`tailwind.config.js`](file:///c:/Users/Asus/Desktop/GIT/tailwind.c
 Los archivos de estilos y scripts fueron empaquetados en modo producción mediante Vite:
 * CSS compilado: `public/build/assets/app-*.css`
 * JS compilado: `public/build/assets/app-*.js`
+
