@@ -41,3 +41,4 @@ Para mantener un historial pericial limpio y comprensible, cada paso de trabajo 
 * `refactor:` Optimización o reestructuración de código sin alterar el comportamiento.
 * `test:` Creación de pruebas unitarias o de integración (`test: add feature tests for incident policy`).
 * `chore:` Ajustes de configuración, migraciones base o documentación técnica.
+
