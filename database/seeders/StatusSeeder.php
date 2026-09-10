@@ -55,3 +55,4 @@ class StatusSeeder extends Seeder
         }
     }
 }
+

@@ -23,3 +23,4 @@ class FolioSequenceSeeder extends Seeder
         );
     }
 }
+

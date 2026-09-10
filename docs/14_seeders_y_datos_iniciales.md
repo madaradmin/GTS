@@ -43,3 +43,4 @@
 
 #### F. Secuencia Anual de Folio (`FolioSequenceSeeder`)
 * Inicializada en el año en curso para dar continuidad correlativa a las incidencias (`INC-YYYY-XXXX`).
+
