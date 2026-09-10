@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AddNoteRequest;
 use App\Http\Requests\AssignIncidentRequest;
 use App\Http\Requests\StoreIncidentRequest;
 use App\Models\Category;
@@ -146,5 +147,39 @@ class IncidentController extends Controller
 
         return redirect()->route('incidents.show', $incident->folio)
             ->with('success', $message);
+    }
+
+    /**
+     * Inicia formalmente la atención técnica y diagnóstico de la incidencia (transición a EN_ATENCION).
+     */
+    public function startAttention(Request $request, Incident $incident): RedirectResponse
+    {
+        Gate::authorize('startAttention', $incident);
+
+        $this->incidentService->startAttention(
+            incident: $incident,
+            user: $request->user(),
+            comment: $request->input('comment')
+        );
+
+        return redirect()->route('incidents.show', $incident->folio)
+            ->with('success', "Atención técnica iniciada. La incidencia {$incident->folio} se encuentra activamente EN ATENCIÓN.");
+    }
+
+    /**
+     * Registra una nota técnica de campo o avance de diagnóstico durante el estado EN_ATENCION.
+     */
+    public function addNote(AddNoteRequest $request, Incident $incident): RedirectResponse
+    {
+        Gate::authorize('addNote', $incident);
+
+        $this->incidentService->addTechnicalNote(
+            incident: $incident,
+            user: $request->user(),
+            note: $request->validated('note')
+        );
+
+        return redirect()->route('incidents.show', $incident->folio)
+            ->with('success', "Nota técnica de campo registrada exitosamente en la bitácora.");
     }
 }

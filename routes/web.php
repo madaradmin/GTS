@@ -19,6 +19,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/incidencias', [IncidentController::class, 'store'])->name('incidents.store');
     Route::get('/incidencias/{incident}', [IncidentController::class, 'show'])->name('incidents.show');
     Route::post('/incidencias/{incident}/asignar', [IncidentController::class, 'assign'])->name('incidents.assign');
+    Route::post('/incidencias/{incident}/iniciar-atencion', [IncidentController::class, 'startAttention'])->name('incidents.start-attention');
+    Route::post('/incidencias/{incident}/notas', [IncidentController::class, 'addNote'])->name('incidents.add-note');
 });
 
 Route::middleware('auth')->group(function () {

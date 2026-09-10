@@ -93,6 +93,20 @@
                     </button>
                 @endcan
 
+                <!-- Botón: Iniciar Atención Técnica (Paso 22) -->
+                @can('startAttention', $incident)
+                    <form method="POST" action="{{ route('incidents.start-attention', $incident) }}" class="inline">
+                        @csrf
+                        <button
+                            type="submit"
+                            class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition-all"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">play_arrow</span>
+                            <span>Iniciar Atención</span>
+                        </button>
+                    </form>
+                @endcan
+
                 @can('create', App\Models\Incident::class)
                     <a
                         href="{{ route('incidents.create') }}"
@@ -104,6 +118,21 @@
                 @endcan
             </div>
         </div>
+
+        <!-- Banner de Atención Técnica Activa -->
+        @if ($incident->status->code === 'EN_ATENCION')
+            <div class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+                <div class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                    <span>Incidencia en Atención Técnica y Diagnóstico de Campo</span>
+                    <span class="text-outline font-normal hidden md:inline">• Responsable: {{ $incident->assignedTo?->name }}</span>
+                </div>
+                <div class="font-mono text-xs text-amber-400/80 flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-[16px]">schedule</span>
+                    <span>Inicio: {{ $incident->attended_at?->format('H:i') ?? 'N/D' }} hrs</span>
+                </div>
+            </div>
+        @endif
 
         <!-- 2. Stepper Visual del Ciclo de Vida (FSM) -->
         <div class="bg-surface-subtle border border-border-subtle p-4 rounded-xl shadow-sm">
@@ -228,6 +257,43 @@
                     </div>
                 @endif
 
+                <!-- Caja de Registro de Notas Técnicas de Campo (Paso 22 - Solo cuando está EN_ATENCION) -->
+                @can('addNote', $incident)
+                    <div class="bg-surface-subtle border border-amber-500/30 p-6 rounded-xl shadow-sm flex flex-col gap-4">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-amber-400 text-[18px]">engineering</span>
+                                Registrar Avance Técnico de Campo
+                            </h2>
+                            <span class="text-[11px] text-outline font-mono">GTS Operaciones</span>
+                        </div>
+
+                        <form method="POST" action="{{ route('incidents.add-note', $incident) }}" class="flex flex-col gap-3">
+                            @csrf
+                            <textarea
+                                name="note"
+                                rows="3"
+                                required
+                                minlength="5"
+                                maxlength="1000"
+                                placeholder="Describir pruebas en sitio, diagnóstico con multímetro/OTDR, sustitución de hardware (switch, PoE, cámara, cableado)..."
+                                class="w-full px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-amber-400/50 transition-colors shadow-inner resize-none"
+                            ></textarea>
+
+                            <div class="flex items-center justify-between flex-wrap gap-2">
+                                <span class="text-[11px] text-outline">Mínimo 5 caracteres • Registro inmutable en bitácora</span>
+                                <button
+                                    type="submit"
+                                    class="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition-all"
+                                >
+                                    <span class="material-symbols-outlined text-[16px]">post_add</span>
+                                    <span>Registrar Avance</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                @endcan
+
                 <!-- Bitácora de Auditoría Inmutable (Línea de Tiempo) -->
                 <div class="bg-surface-subtle border border-border-subtle p-6 rounded-xl shadow-sm flex flex-col gap-4">
                     <h2 class="text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center justify-between">
@@ -244,17 +310,35 @@
                         @foreach($incident->histories as $h)
                             <div class="relative flex flex-col gap-1">
                                 <!-- Punto de la línea de tiempo -->
-                                <div class="absolute -left-[31px] top-0.5 w-3 h-3 rounded-full bg-surface-base border-2 border-primary"></div>
+                                <div class="absolute -left-[31px] top-0.5 w-3 h-3 rounded-full bg-surface-base border-2
+                                    @if($h->action === 'NOTA_TECNICA') border-amber-400 bg-amber-400/30
+                                    @elseif($h->action === 'CAMBIO_ESTADO') border-blue-400
+                                    @else border-primary @endif">
+                                </div>
 
                                 <div class="flex items-center gap-2 flex-wrap text-xs">
-                                    <span class="font-mono font-bold text-primary">{{ $h->action }}</span>
+                                    <span class="font-mono font-bold text-[11px] px-2 py-0.5 rounded uppercase
+                                        @if($h->action === 'NOTA_TECNICA') bg-amber-500/15 text-amber-400 border border-amber-500/30
+                                        @elseif($h->action === 'CAMBIO_ESTADO') bg-blue-500/15 text-blue-400 border border-blue-500/30
+                                        @elseif($h->action === 'ASIGNADA' || $h->action === 'REASIGNADA') bg-purple-500/15 text-purple-400 border border-purple-500/30
+                                        @else bg-surface-container-high text-primary border border-border-subtle @endif">
+                                        {{ $h->action }}
+                                    </span>
                                     <span class="text-outline">•</span>
                                     <span class="font-medium text-on-surface">{{ $h->user?->name ?? 'Sistema' }}</span>
                                     <span class="text-outline">•</span>
                                     <span class="font-mono text-[11px] text-outline">{{ $h->created_at->format('d M Y H:i:s') }}</span>
                                 </div>
 
-                                @if($h->comment)
+                                @if($h->action === 'NOTA_TECNICA')
+                                    <div class="p-3.5 bg-amber-500/5 rounded-xl border border-amber-500/20 text-xs text-on-surface leading-relaxed mt-1">
+                                        <div class="flex items-center gap-1.5 text-amber-400 font-semibold text-[11px] mb-1">
+                                            <span class="material-symbols-outlined text-[15px]">engineering</span>
+                                            <span>Avance / Diagnóstico Técnico:</span>
+                                        </div>
+                                        <p class="whitespace-pre-line text-on-surface-variant font-sans">{{ $h->comment }}</p>
+                                    </div>
+                                @elseif($h->comment)
                                     <p class="text-xs text-on-surface-variant bg-surface-container-low p-2.5 rounded-lg border border-border-subtle mt-1 font-sans">
                                         {{ $h->comment }}
                                     </p>

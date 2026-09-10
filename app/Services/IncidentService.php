@@ -132,5 +132,76 @@ class IncidentService
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
     }
+
+    /**
+     * Inicia la atención técnica y diagnóstico en sitio o consola (transición a EN_ATENCION).
+     *
+     * @param Incident $incident Incidencia objetivo
+     * @param User $user Especialista técnico que inicia la atención (GTS o Admin)
+     * @param string|null $comment Observaciones opcionales iniciales
+     * @return Incident
+     */
+    public function startAttention(Incident $incident, User $user, ?string $comment = null): Incident
+    {
+        return DB::transaction(function () use ($incident, $user, $comment) {
+            $previousStatus = $incident->status->name;
+
+            // 1. Si la incidencia no tenía técnico asignado, auto-asignar al técnico que inicia atención (RN-02 / RN-03)
+            if (is_null($incident->assigned_to_user_id)) {
+                $incident->assigned_to_user_id = $user->id;
+                $incident->assigned_at = now();
+
+                $this->auditService->logAction(
+                    incidentId: $incident->id,
+                    userId: $user->id,
+                    action: 'ASIGNADA',
+                    fieldName: 'assigned_to_user_id',
+                    oldValue: 'Sin asignar',
+                    newValue: $user->name,
+                    comment: "Incidencia asumida directamente al iniciar atención técnica."
+                );
+            }
+
+            // 2. Transicionar estado operacional a EN_ATENCION
+            $inAttentionStatus = Status::where('code', 'EN_ATENCION')->firstOrFail();
+            $incident->status_id = $inAttentionStatus->id;
+            $incident->attended_at = now();
+            $incident->save();
+
+            // 3. Registrar auditoría inmutable de cambio de estado
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $user->id,
+                action: 'CAMBIO_ESTADO',
+                fieldName: 'status_id',
+                oldValue: $previousStatus,
+                newValue: $inAttentionStatus->name,
+                comment: $comment ?? "Atención técnica iniciada por el especialista {$user->name}."
+            );
+
+            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
+        });
+    }
+
+    /**
+     * Registra una nota técnica de campo o avance de diagnóstico en la bitácora de la incidencia.
+     *
+     * @param Incident $incident Incidencia en atención activa
+     * @param User $user Especialista técnico o administrador
+     * @param string $note Contenido detallado del avance técnico
+     * @return \App\Models\IncidentHistory
+     */
+    public function addTechnicalNote(Incident $incident, User $user, string $note): \App\Models\IncidentHistory
+    {
+        return $this->auditService->logAction(
+            incidentId: $incident->id,
+            userId: $user->id,
+            action: 'NOTA_TECNICA',
+            fieldName: null,
+            oldValue: null,
+            newValue: null,
+            comment: trim($note)
+        );
+    }
 }
 
