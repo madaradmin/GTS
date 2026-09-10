@@ -34,3 +34,4 @@ class Category extends Model
         return $this->hasMany(Incident::class);
     }
 }
+

@@ -25,3 +25,4 @@ class FolioSequence extends Model
         ];
     }
 }
+

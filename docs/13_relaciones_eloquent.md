@@ -30,3 +30,4 @@
    Al desactivar `UPDATED_AT`, Eloquent nunca intentará ejecutar sentencias `UPDATE` sobre los registros de trazabilidad.
 3. **Verificación de Rol Eficiente (`User::hasRole`):**
    Carga perezosa (*lazy loading*) con salvaguarda si la relación ya está en memoria para evitar consultas duplicadas a la base de datos.
+
