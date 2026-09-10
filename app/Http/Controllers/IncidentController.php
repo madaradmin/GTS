@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AddNoteRequest;
 use App\Http\Requests\AssignIncidentRequest;
+use App\Http\Requests\ResolveIncidentRequest;
 use App\Http\Requests\StoreIncidentRequest;
 use App\Models\Category;
 use App\Models\Incident;
@@ -181,5 +182,22 @@ class IncidentController extends Controller
 
         return redirect()->route('incidents.show', $incident->folio)
             ->with('success', "Nota técnica de campo registrada exitosamente en la bitácora.");
+    }
+
+    /**
+     * Marca la incidencia como RESUELTA documentando la solución técnica aplicada (RF-05 / RN-02).
+     */
+    public function resolve(ResolveIncidentRequest $request, Incident $incident): RedirectResponse
+    {
+        Gate::authorize('resolve', $incident);
+
+        $this->incidentService->resolveIncident(
+            incident: $incident,
+            technician: $request->user(),
+            solutionDescription: $request->validated('solution_description')
+        );
+
+        return redirect()->route('incidents.show', $incident->folio)
+            ->with('success', "Incidencia {$incident->folio} resuelta exitosamente. Pendiente de validación y visto bueno por APOC.");
     }
 }

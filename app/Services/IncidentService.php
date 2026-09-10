@@ -203,5 +203,52 @@ class IncidentService
             comment: trim($note)
         );
     }
+
+    /**
+     * Marca la incidencia como RESUELTA por el personal técnico GTS, documentando la solución aplicada.
+     *
+     * @param Incident $incident Incidencia en atención técnica
+     * @param User $technician Especialista técnico o Administrador que resuelve
+     * @param string $solutionDescription Detalle técnico exhaustivo de la solución aplicada
+     * @return Incident
+     */
+    public function resolveIncident(Incident $incident, User $technician, string $solutionDescription): Incident
+    {
+        return DB::transaction(function () use ($incident, $technician, $solutionDescription) {
+            $previousStatus = $incident->status->name;
+            $resolvedStatus = Status::where('code', 'RESUELTA')->firstOrFail();
+
+            // 1. Actualizar estado operacional, solución técnica y timestamp de resolución (RN-02)
+            $incident->status_id = $resolvedStatus->id;
+            $incident->solution_description = trim($solutionDescription);
+            $incident->resolved_at = now();
+            $incident->save();
+
+            // 2. Registrar auditoría de cambio de estado a RESUELTA (RN-04)
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $technician->id,
+                action: 'CAMBIO_ESTADO',
+                fieldName: 'status_id',
+                oldValue: $previousStatus,
+                newValue: $resolvedStatus->name,
+                comment: "Incidencia marcada como RESUELTA por el especialista {$technician->name}."
+            );
+
+            // 3. Registrar auditoría específica de la solución aplicada (RF-05 / RN-02 / RN-04)
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $technician->id,
+                action: 'RESUELTA',
+                fieldName: 'solution_description',
+                oldValue: null,
+                newValue: null,
+                comment: trim($solutionDescription)
+            );
+
+            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
+        });
+    }
 }
+
 

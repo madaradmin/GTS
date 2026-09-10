@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6" x-data="{ showAssignModal: false }">
+    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6" x-data="{ showAssignModal: false, showResolveModal: false }">
         
         <!-- Notificaciones Flash -->
         @if (session('success'))
@@ -107,6 +107,18 @@
                     </form>
                 @endcan
 
+                <!-- Botón: Marcar como Resuelta (Paso 23) -->
+                @can('resolve', $incident)
+                    <button
+                        type="button"
+                        @click="showResolveModal = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">task_alt</span>
+                        <span>Marcar como Resuelta</span>
+                    </button>
+                @endcan
+
                 @can('create', App\Models\Incident::class)
                     <a
                         href="{{ route('incidents.create') }}"
@@ -209,6 +221,34 @@
             <!-- Columna Izquierda (8 cols): Descripción, Adjuntos, Bitácora -->
             <div class="lg:col-span-8 flex flex-col gap-6">
                 
+                <!-- Solución Técnica Aplicada (Paso 23) -->
+                @if($incident->solution_description)
+                    <div class="bg-surface-subtle border border-emerald-500/40 p-6 rounded-xl shadow-sm flex flex-col gap-4">
+                        <div class="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-border-subtle">
+                            <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-emerald-400 text-[20px]">task_alt</span>
+                                <span>Solución Técnica Certificada (GTS)</span>
+                            </h2>
+                            @if($incident->resolved_at)
+                                <span class="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 font-mono text-[11px] font-semibold border border-emerald-500/30">
+                                    Resuelta: {{ $incident->resolved_at->format('d/m/Y H:i') }} hrs
+                                </span>
+                            @endif
+                        </div>
+
+                        <div class="text-xs sm:text-sm text-on-surface leading-relaxed whitespace-pre-line bg-surface-container-low p-4 rounded-xl border border-border-subtle font-sans">
+                            {{ $incident->solution_description }}
+                        </div>
+
+                        @if($incident->status->code === 'RESUELTA')
+                            <div class="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20 text-xs text-blue-300 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[18px] text-blue-400">pending_actions</span>
+                                <span>En espera de validación de servicio y visto bueno por el Centro de Operaciones (APOC) para proceder con el cierre formal del ticket.</span>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 <!-- Descripción del Problema -->
                 <div class="bg-surface-subtle border border-border-subtle p-6 rounded-xl shadow-sm flex flex-col gap-4">
                     <h2 class="text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center gap-2">
@@ -312,6 +352,7 @@
                                 <!-- Punto de la línea de tiempo -->
                                 <div class="absolute -left-[31px] top-0.5 w-3 h-3 rounded-full bg-surface-base border-2
                                     @if($h->action === 'NOTA_TECNICA') border-amber-400 bg-amber-400/30
+                                    @elseif($h->action === 'RESUELTA') border-emerald-400 bg-emerald-400/30
                                     @elseif($h->action === 'CAMBIO_ESTADO') border-blue-400
                                     @else border-primary @endif">
                                 </div>
@@ -319,6 +360,7 @@
                                 <div class="flex items-center gap-2 flex-wrap text-xs">
                                     <span class="font-mono font-bold text-[11px] px-2 py-0.5 rounded uppercase
                                         @if($h->action === 'NOTA_TECNICA') bg-amber-500/15 text-amber-400 border border-amber-500/30
+                                        @elseif($h->action === 'RESUELTA') bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
                                         @elseif($h->action === 'CAMBIO_ESTADO') bg-blue-500/15 text-blue-400 border border-blue-500/30
                                         @elseif($h->action === 'ASIGNADA' || $h->action === 'REASIGNADA') bg-purple-500/15 text-purple-400 border border-purple-500/30
                                         @else bg-surface-container-high text-primary border border-border-subtle @endif">
@@ -335,6 +377,14 @@
                                         <div class="flex items-center gap-1.5 text-amber-400 font-semibold text-[11px] mb-1">
                                             <span class="material-symbols-outlined text-[15px]">engineering</span>
                                             <span>Avance / Diagnóstico Técnico:</span>
+                                        </div>
+                                        <p class="whitespace-pre-line text-on-surface-variant font-sans">{{ $h->comment }}</p>
+                                    </div>
+                                @elseif($h->action === 'RESUELTA')
+                                    <div class="p-3.5 bg-emerald-500/5 rounded-xl border border-emerald-500/20 text-xs text-on-surface leading-relaxed mt-1">
+                                        <div class="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px] mb-1">
+                                            <span class="material-symbols-outlined text-[15px]">task_alt</span>
+                                            <span>Solución Técnica Certificada por GTS:</span>
                                         </div>
                                         <p class="whitespace-pre-line text-on-surface-variant font-sans">{{ $h->comment }}</p>
                                     </div>
@@ -520,6 +570,82 @@
                             class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm transition-all"
                         >
                             Confirmar Asignación
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 5. Modal de Resolución Técnica de Incidencia (Paso 23) -->
+        <div
+            x-show="showResolveModal"
+            x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-base/80 backdrop-blur-sm"
+            @keydown.escape.window="showResolveModal = false"
+        >
+            <div
+                class="bg-surface-subtle border border-border-subtle w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+                @click.outside="showResolveModal = false"
+            >
+                <div class="flex items-center justify-between pb-2 border-b border-border-subtle">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-emerald-400 text-[22px]">task_alt</span>
+                        <h3 class="text-base font-bold text-on-surface">
+                            Resolución Técnica de Incidencia
+                        </h3>
+                    </div>
+                    <button
+                        type="button"
+                        @click="showResolveModal = false"
+                        class="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                <form method="POST" action="{{ route('incidents.resolve', $incident) }}" class="flex flex-col gap-4">
+                    @csrf
+
+                    <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle flex items-center justify-between text-xs">
+                        <span class="text-outline">Folio:</span>
+                        <span class="font-mono font-bold text-primary">{{ $incident->folio }}</span>
+                    </div>
+
+                    <!-- Descripción de la Solución Técnica Aplicada -->
+                    <div class="flex flex-col gap-1.5">
+                        <label for="modal_solution_description" class="text-xs font-semibold text-on-surface">
+                            Descripción Técnica de la Solución Aplicada <span class="text-status-critical">*</span>
+                        </label>
+                        <textarea
+                            id="modal_solution_description"
+                            name="solution_description"
+                            rows="5"
+                            required
+                            minlength="15"
+                            maxlength="3000"
+                            placeholder="Detallar las acciones técnicas ejecutadas: componentes sustituidos (marca, modelo, serial), reconfiguración de puertos/VLANs, pruebas de calibración o telemetría en consola, y confirmación de estabilidad..."
+                            class="w-full px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-emerald-400/50 transition-colors shadow-inner resize-none"
+                        ></textarea>
+                        <span class="text-[11px] text-outline">
+                            Mínimo 15 caracteres obligatorios. La solución quedará registrada de forma inmutable en el expediente de auditoría.
+                        </span>
+                    </div>
+
+                    <!-- Botones de Acción Modal -->
+                    <div class="flex items-center justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            @click="showResolveModal = false"
+                            class="px-4 py-2 bg-surface-container-high hover:bg-surface-container text-on-surface font-semibold text-xs rounded-xl border border-border-subtle transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                            <span>Confirmar y Marcar como Resuelta</span>
                         </button>
                     </div>
                 </form>
