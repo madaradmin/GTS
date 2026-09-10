@@ -32,6 +32,12 @@
                             </span>
                         </x-nav-link>
                     @endcan
+                    <x-nav-link :href="route('audit.index')" :active="request()->routeIs('audit.index')">
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[18px]">manage_history</span>
+                            {{ __('Auditoría') }}
+                        </span>
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -95,6 +101,9 @@
                     {{ __('Nueva Incidencia') }}
                 </x-responsive-nav-link>
             @endcan
+            <x-responsive-nav-link :href="route('audit.index')" :active="request()->routeIs('audit.index')">
+                {{ __('Auditoría') }}
+            </x-responsive-nav-link>
         </div>
 
         <!-- Responsive Settings Options -->

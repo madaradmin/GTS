@@ -217,3 +217,4 @@ class CloseIncidentTest extends TestCase
         $this->assertNull($incident->closed_at);
     }
 }
+

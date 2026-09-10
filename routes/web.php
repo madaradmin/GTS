@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/incidencias/{incident}/resolver', [IncidentController::class, 'resolve'])->name('incidents.resolve');
     Route::post('/incidencias/{incident}/rechazar-solucion', [IncidentController::class, 'rejectResolution'])->name('incidents.reject-resolution');
     Route::post('/incidencias/{incident}/cerrar', [IncidentController::class, 'close'])->name('incidents.close');
+
+    // Módulo de Trazabilidad y Auditoría (Fase 6 - Paso 26)
+    Route::get('/auditoria', [AuditController::class, 'index'])->name('audit.index');
 });
 
 Route::middleware('auth')->group(function () {
