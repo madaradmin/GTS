@@ -16,6 +16,8 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+
         return view('profile.edit', [
             'user' => $request->user(),
         ]);
@@ -26,6 +28,8 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
+        abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+
         $request->user()->fill($request->validated());
 
         if ($request->user()->isDirty('email')) {
@@ -42,6 +46,8 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+
         $request->validateWithBag('userDeletion', [
             'password' => ['required', 'current_password'],
         ]);

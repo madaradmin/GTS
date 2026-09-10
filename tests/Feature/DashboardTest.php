@@ -202,3 +202,4 @@ class DashboardTest extends TestCase
         $this->assertTrue($metrics['mttr_within_target']); // 20 <= 25
     }
 }
+
