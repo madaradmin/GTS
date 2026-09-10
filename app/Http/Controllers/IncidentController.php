@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AssignIncidentRequest;
 use App\Http\Requests\StoreIncidentRequest;
 use App\Models\Category;
 use App\Models\Incident;
 use App\Models\Priority;
 use App\Models\Status;
+use App\Models\User;
 use App\Services\FolioGeneratorService;
 use App\Services\IncidentService;
 use Illuminate\Http\RedirectResponse;
@@ -99,16 +101,50 @@ class IncidentController extends Controller
 
     /**
      * Muestra el detalle de una incidencia por su folio único.
-     * (Estructura base para permitir la redirección de store; la vista completa se profundiza en el Paso 22).
      */
-    public function show(string $folio): View
+    public function show(Incident $incident): View
     {
-        $incident = Incident::with(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments'])
-            ->where('folio', $folio)
-            ->firstOrFail();
-
         Gate::authorize('view', $incident);
 
-        return view('incidents.show', compact('incident'));
+        $incident->load([
+            'category',
+            'priority',
+            'status',
+            'reportedBy',
+            'assignedTo',
+            'histories.user',
+            'attachments.uploadedBy',
+        ]);
+
+        $gtsUsers = User::where('is_active', true)
+            ->whereHas('role', fn($q) => $q->where('slug', 'gts'))
+            ->orderBy('name')
+            ->get();
+
+        return view('incidents.show', compact('incident', 'gtsUsers'));
+    }
+
+    /**
+     * Asigna o reasigna un especialista GTS a la incidencia.
+     */
+    public function assign(AssignIncidentRequest $request, Incident $incident): RedirectResponse
+    {
+        Gate::authorize('assign', $incident);
+
+        $technician = User::findOrFail($request->validated('assigned_to_user_id'));
+
+        $this->incidentService->assignIncident(
+            incident: $incident,
+            assigner: $request->user(),
+            technician: $technician,
+            comment: $request->validated('comment')
+        );
+
+        $message = $request->user()->id === $technician->id
+            ? "Has tomado la responsabilidad técnica de la incidencia {$incident->folio}."
+            : "Incidencia {$incident->folio} asignada al especialista {$technician->name} exitosamente.";
+
+        return redirect()->route('incidents.show', $incident->folio)
+            ->with('success', $message);
     }
 }

@@ -66,5 +66,71 @@ class IncidentService
             return $incident->load(['category', 'priority', 'status', 'reportedBy', 'attachments']);
         });
     }
+
+    /**
+     * Asigna o reasigna un especialista GTS a la incidencia y actualiza el estado operacional.
+     *
+     * @param Incident $incident Incidencia a asignar
+     * @param User $assigner Usuario autenticado que ejecuta la acción (GTS o Admin)
+     * @param User $technician Especialista GTS asignado como responsable técnico
+     * @param string|null $comment Observaciones opcionales sobre la asignación
+     * @return Incident
+     */
+    public function assignIncident(Incident $incident, User $assigner, User $technician, ?string $comment = null): Incident
+    {
+        return DB::transaction(function () use ($incident, $assigner, $technician, $comment) {
+            $isInitialAssignment = is_null($incident->assigned_to_user_id);
+            $previousTechnician = $incident->assignedTo?->name ?? 'Sin asignar';
+            $previousStatus = $incident->status->name;
+
+            // 1. Si la incidencia se encuentra en estado NUEVA, transicionar a ASIGNADA (RN-02 / RN-03)
+            if ($incident->status->code === 'NUEVA') {
+                $assignedStatus = Status::where('code', 'ASIGNADA')->firstOrFail();
+                $incident->status_id = $assignedStatus->id;
+
+                $this->auditService->logAction(
+                    incidentId: $incident->id,
+                    userId: $assigner->id,
+                    action: 'CAMBIO_ESTADO',
+                    fieldName: 'status_id',
+                    oldValue: $previousStatus,
+                    newValue: $assignedStatus->name,
+                    comment: $comment ?? ($assigner->id === $technician->id 
+                        ? "Incidencia tomada directamente por {$technician->name}." 
+                        : "Incidencia asignada a {$technician->name}.")
+                );
+            }
+
+            // 2. Actualizar técnico asignado y timestamp de asignación
+            $incident->assigned_to_user_id = $technician->id;
+            if (is_null($incident->assigned_at)) {
+                $incident->assigned_at = now();
+            }
+            $incident->save();
+
+            // 3. Registrar auditoría de asignación o reasignación inmutable (RF-08 / RN-04)
+            $auditAction = $isInitialAssignment ? 'ASIGNADA' : 'REASIGNADA';
+            $auditComment = $comment;
+            if (empty($auditComment)) {
+                $auditComment = $isInitialAssignment
+                    ? ($assigner->id === $technician->id 
+                        ? "El especialista {$technician->name} tomó la responsabilidad técnica de la incidencia."
+                        : "Asignado a {$technician->name} por {$assigner->name}.")
+                    : "Reasignado de {$previousTechnician} a {$technician->name} por {$assigner->name}.";
+            }
+
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $assigner->id,
+                action: $auditAction,
+                fieldName: 'assigned_to_user_id',
+                oldValue: $previousTechnician,
+                newValue: $technician->name,
+                comment: $auditComment
+            );
+
+            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
+        });
+    }
 }
 

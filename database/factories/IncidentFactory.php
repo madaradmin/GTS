@@ -42,7 +42,7 @@ class IncidentFactory extends Factory
         ];
 
         $year = (int) date('Y');
-        $folio = sprintf('INC-%04d-%04d', $year, static::$folioCounter++);
+        $folio = sprintf('INC-%04d-%04d', $year, fake()->unique()->numberBetween(1000, 99999));
 
         return [
             'folio' => $folio,

@@ -43,6 +43,14 @@ class Incident extends Model
     }
 
     /**
+     * Utilizar el folio inmutable para el enlace de modelos en rutas (Route Model Binding).
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'folio';
+    }
+
+    /**
      * Categoría / Subsistema tecnológico afectado.
      */
     public function category(): BelongsTo
