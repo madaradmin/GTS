@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AddNoteRequest;
 use App\Http\Requests\AssignIncidentRequest;
+use App\Http\Requests\RejectResolutionRequest;
 use App\Http\Requests\ResolveIncidentRequest;
 use App\Http\Requests\StoreIncidentRequest;
 use App\Models\Category;
@@ -199,5 +200,22 @@ class IncidentController extends Controller
 
         return redirect()->route('incidents.show', $incident->folio)
             ->with('success', "Incidencia {$incident->folio} resuelta exitosamente. Pendiente de validación y visto bueno por APOC.");
+    }
+
+    /**
+     * Rechaza la solución técnica presentada por GTS y reingresa el ticket a EN_ATENCION (RF-05 / RN-02).
+     */
+    public function rejectResolution(RejectResolutionRequest $request, Incident $incident): RedirectResponse
+    {
+        Gate::authorize('rejectResolution', $incident);
+
+        $this->incidentService->rejectResolution(
+            incident: $incident,
+            actor: $request->user(),
+            reason: $request->validated('rejection_reason')
+        );
+
+        return redirect()->route('incidents.show', $incident->folio)
+            ->with('success', "Solución de la incidencia {$incident->folio} rechazada. El expediente ha retornado al estado EN ATENCIÓN para nuevo diagnóstico por GTS.");
     }
 }

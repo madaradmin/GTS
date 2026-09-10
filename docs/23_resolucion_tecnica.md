@@ -189,3 +189,4 @@ php artisan test
 * [x] Bitácora inmutable registra eventos `CAMBIO_ESTADO` y `RESUELTA`.
 * [x] Suite `ResolveIncidentTest` (7 tests) y suite completa (82 tests) ejecutadas con 100% de éxito.
 * [x] Base de datos de desarrollo re-sembrada (`php artisan db:seed`).
+

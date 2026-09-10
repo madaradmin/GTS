@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6" x-data="{ showAssignModal: false, showResolveModal: false }">
+    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6" x-data="{ showAssignModal: false, showResolveModal: false, showRejectModal: false }">
         
         <!-- Notificaciones Flash -->
         @if (session('success'))
@@ -119,6 +119,18 @@
                     </button>
                 @endcan
 
+                <!-- Botón: Rechazar Solución (Paso 24 - APOC) -->
+                @can('rejectResolution', $incident)
+                    <button
+                        type="button"
+                        @click="showRejectModal = true"
+                        class="inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 font-bold text-xs rounded-xl shadow-sm transition-all"
+                    >
+                        <span class="material-symbols-outlined text-[18px]">replay</span>
+                        <span>Rechazar Solución</span>
+                    </button>
+                @endcan
+
                 @can('create', App\Models\Incident::class)
                     <a
                         href="{{ route('incidents.create') }}"
@@ -130,6 +142,24 @@
                 @endcan
             </div>
         </div>
+
+        <!-- Banner de Observación de Rechazo Previo (Paso 24) -->
+        @if ($incident->rejection_reason && $incident->status->code === 'EN_ATENCION')
+            <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex flex-col sm:flex-row sm:items-start justify-between gap-3 shadow-sm">
+                <div class="flex items-start gap-2.5 text-xs sm:text-sm">
+                    <span class="material-symbols-outlined text-rose-400 text-[22px] shrink-0 mt-0.5">warning</span>
+                    <div class="flex flex-col gap-1">
+                        <span class="font-bold text-rose-400">Solución Técnica Previa Rechazada por APOC</span>
+                        <p class="text-xs text-rose-200/90 leading-relaxed font-sans">
+                            {{ $incident->rejection_reason }}
+                        </p>
+                    </div>
+                </div>
+                <span class="px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 text-[11px] font-mono shrink-0 self-start">
+                    Reingreso a Diagnóstico
+                </span>
+            </div>
+        @endif
 
         <!-- Banner de Atención Técnica Activa -->
         @if ($incident->status->code === 'EN_ATENCION')
@@ -353,6 +383,7 @@
                                 <div class="absolute -left-[31px] top-0.5 w-3 h-3 rounded-full bg-surface-base border-2
                                     @if($h->action === 'NOTA_TECNICA') border-amber-400 bg-amber-400/30
                                     @elseif($h->action === 'RESUELTA') border-emerald-400 bg-emerald-400/30
+                                    @elseif($h->action === 'RECHAZO_SOLUCION') border-rose-500 bg-rose-500/30
                                     @elseif($h->action === 'CAMBIO_ESTADO') border-blue-400
                                     @else border-primary @endif">
                                 </div>
@@ -361,6 +392,7 @@
                                     <span class="font-mono font-bold text-[11px] px-2 py-0.5 rounded uppercase
                                         @if($h->action === 'NOTA_TECNICA') bg-amber-500/15 text-amber-400 border border-amber-500/30
                                         @elseif($h->action === 'RESUELTA') bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
+                                        @elseif($h->action === 'RECHAZO_SOLUCION') bg-rose-500/15 text-rose-400 border border-rose-500/30
                                         @elseif($h->action === 'CAMBIO_ESTADO') bg-blue-500/15 text-blue-400 border border-blue-500/30
                                         @elseif($h->action === 'ASIGNADA' || $h->action === 'REASIGNADA') bg-purple-500/15 text-purple-400 border border-purple-500/30
                                         @else bg-surface-container-high text-primary border border-border-subtle @endif">
@@ -385,6 +417,14 @@
                                         <div class="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px] mb-1">
                                             <span class="material-symbols-outlined text-[15px]">task_alt</span>
                                             <span>Solución Técnica Certificada por GTS:</span>
+                                        </div>
+                                        <p class="whitespace-pre-line text-on-surface-variant font-sans">{{ $h->comment }}</p>
+                                    </div>
+                                @elseif($h->action === 'RECHAZO_SOLUCION')
+                                    <div class="p-3.5 bg-rose-500/5 rounded-xl border border-rose-500/20 text-xs text-on-surface leading-relaxed mt-1">
+                                        <div class="flex items-center gap-1.5 text-rose-400 font-semibold text-[11px] mb-1">
+                                            <span class="material-symbols-outlined text-[15px]">cancel</span>
+                                            <span>Motivo de Rechazo por APOC:</span>
                                         </div>
                                         <p class="whitespace-pre-line text-on-surface-variant font-sans">{{ $h->comment }}</p>
                                     </div>
@@ -646,6 +686,82 @@
                         >
                             <span class="material-symbols-outlined text-[18px]">check_circle</span>
                             <span>Confirmar y Marcar como Resuelta</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 6. Modal de Rechazo de Solución por APOC (Paso 24) -->
+        <div
+            x-show="showRejectModal"
+            x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-base/80 backdrop-blur-sm"
+            @keydown.escape.window="showRejectModal = false"
+        >
+            <div
+                class="bg-surface-subtle border border-border-subtle w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+                @click.outside="showRejectModal = false"
+            >
+                <div class="flex items-center justify-between pb-2 border-b border-border-subtle">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-rose-400 text-[22px]">replay</span>
+                        <h3 class="text-base font-bold text-on-surface">
+                            Rechazo de Solución Técnica (APOC)
+                        </h3>
+                    </div>
+                    <button
+                        type="button"
+                        @click="showRejectModal = false"
+                        class="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                <form method="POST" action="{{ route('incidents.reject-resolution', $incident) }}" class="flex flex-col gap-4">
+                    @csrf
+
+                    <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle flex items-center justify-between text-xs">
+                        <span class="text-outline">Folio de Expediente:</span>
+                        <span class="font-mono font-bold text-primary">{{ $incident->folio }}</span>
+                    </div>
+
+                    <!-- Motivo Obligatorio de Rechazo -->
+                    <div class="flex flex-col gap-1.5">
+                        <label for="modal_rejection_reason" class="text-xs font-semibold text-on-surface">
+                            Motivo / Hallazgos de Rechazo <span class="text-status-critical">*</span>
+                        </label>
+                        <textarea
+                            id="modal_rejection_reason"
+                            name="rejection_reason"
+                            rows="4"
+                            required
+                            minlength="10"
+                            maxlength="1000"
+                            placeholder="Explicar detalladamente por qué no se acepta la solución: pruebas en sitio fallidas, persistencia de intermitencia, cámaras aún sin telemetría, errores en e-Gates..."
+                            class="w-full px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-rose-400/50 transition-colors shadow-inner resize-none"
+                        ></textarea>
+                        <span class="text-[11px] text-outline">
+                            Mínimo 10 caracteres obligatorios. Este reporte devolverá el ticket inmediatamente al estado EN ATENCIÓN para nuevo diagnóstico técnico por GTS.
+                        </span>
+                    </div>
+
+                    <!-- Botones de Acción Modal -->
+                    <div class="flex items-center justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            @click="showRejectModal = false"
+                            class="px-4 py-2 bg-surface-container-high hover:bg-surface-container text-on-surface font-semibold text-xs rounded-xl border border-border-subtle transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">replay</span>
+                            <span>Confirmar Rechazo y Reabrir Atención</span>
                         </button>
                     </div>
                 </form>

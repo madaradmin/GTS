@@ -249,6 +249,52 @@ class IncidentService
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
     }
+
+    /**
+     * Rechaza la solución técnica reportada por GTS y devuelve la incidencia al estado activo EN_ATENCION.
+     *
+     * @param Incident $incident Incidencia en estado RESUELTA
+     * @param User $actor Operador APOC o Administrador que rechaza
+     * @param string $reason Justificación obligatoria detallando por qué la falla persiste
+     * @return Incident
+     */
+    public function rejectResolution(Incident $incident, User $actor, string $reason): Incident
+    {
+        return DB::transaction(function () use ($incident, $actor, $reason) {
+            $previousStatus = $incident->status->name;
+            $inAttentionStatus = Status::where('code', 'EN_ATENCION')->firstOrFail();
+
+            // 1. Revertir estado a EN_ATENCION y registrar el motivo de rechazo (RN-02)
+            $incident->status_id = $inAttentionStatus->id;
+            $incident->rejection_reason = trim($reason);
+            $incident->resolved_at = null; // Se reinicia el tiempo de resolución para reabrir la ventana técnica
+            $incident->save();
+
+            // 2. Auditoría inmutable del cambio de estado regresivo
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $actor->id,
+                action: 'CAMBIO_ESTADO',
+                fieldName: 'status_id',
+                oldValue: $previousStatus,
+                newValue: $inAttentionStatus->name,
+                comment: "Solución rechazada por {$actor->name} (APOC). Incidencia reingresada a atención técnica."
+            );
+
+            // 3. Auditoría inmutable del rechazo con la justificación operativa (RF-05 / RN-02 / RN-04)
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $actor->id,
+                action: 'RECHAZO_SOLUCION',
+                fieldName: 'rejection_reason',
+                oldValue: null,
+                newValue: null,
+                comment: trim($reason)
+            );
+
+            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
+        });
+    }
 }
 
 
