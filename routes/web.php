@@ -14,6 +14,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('dashboard');
 
     // Módulo de Incidencias Operativas (APOC / GTS)
+    Route::get('/incidencias', [IncidentController::class, 'index'])->name('incidents.index');
     Route::get('/incidencias/nueva', [IncidentController::class, 'create'])->name('incidents.create');
     Route::post('/incidencias', [IncidentController::class, 'store'])->name('incidents.store');
     Route::get('/incidencias/{folio}', [IncidentController::class, 'show'])->name('incidents.show');

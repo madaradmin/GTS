@@ -13,8 +13,25 @@
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        {{ __('Dashboard') }}
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[18px]">grid_view</span>
+                            {{ __('Dashboard') }}
+                        </span>
                     </x-nav-link>
+                    <x-nav-link :href="route('incidents.index')" :active="request()->routeIs('incidents.index') || request()->routeIs('incidents.show')">
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[18px]">confirmation_number</span>
+                            {{ __('Incidencias') }}
+                        </span>
+                    </x-nav-link>
+                    @can('create', App\Models\Incident::class)
+                        <x-nav-link :href="route('incidents.create')" :active="request()->routeIs('incidents.create')">
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                                {{ __('Nueva Incidencia') }}
+                            </span>
+                        </x-nav-link>
+                    @endcan
                 </div>
             </div>
 
@@ -70,6 +87,14 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('incidents.index')" :active="request()->routeIs('incidents.index') || request()->routeIs('incidents.show')">
+                {{ __('Incidencias') }}
+            </x-responsive-nav-link>
+            @can('create', App\Models\Incident::class)
+                <x-responsive-nav-link :href="route('incidents.create')" :active="request()->routeIs('incidents.create')">
+                    {{ __('Nueva Incidencia') }}
+                </x-responsive-nav-link>
+            @endcan
         </div>
 
         <!-- Responsive Settings Options -->

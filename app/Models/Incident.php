@@ -118,12 +118,27 @@ class Incident extends Model
         }
 
         $term = trim($term);
+        $like = $query->getConnection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
 
-        return $query->where(function ($q) use ($term) {
-            $q->where('folio', 'ILIKE', "%{$term}%")
-              ->orWhere('title', 'ILIKE', "%{$term}%")
-              ->orWhere('location', 'ILIKE', "%{$term}%");
+        return $query->where(function ($q) use ($term, $like) {
+            $q->where('folio', $like, "%{$term}%")
+              ->orWhere('title', $like, "%{$term}%")
+              ->orWhere('location', $like, "%{$term}%");
         });
+    }
+
+    /**
+     * Scope para aplicar filtros combinados de búsqueda, estado, prioridad y categoría.
+     *
+     * @param array<string, mixed> $filters
+     */
+    public function scopeFilter(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when(!empty($filters['search']), fn ($q) => $q->search($filters['search']))
+            ->when(!empty($filters['status_id']), fn ($q) => $q->where('status_id', $filters['status_id']))
+            ->when(!empty($filters['priority_id']), fn ($q) => $q->where('priority_id', $filters['priority_id']))
+            ->when(!empty($filters['category_id']), fn ($q) => $q->where('category_id', $filters['category_id']));
     }
 }
 

@@ -6,6 +6,7 @@ use App\Http\Requests\StoreIncidentRequest;
 use App\Models\Category;
 use App\Models\Incident;
 use App\Models\Priority;
+use App\Models\Status;
 use App\Services\FolioGeneratorService;
 use App\Services\IncidentService;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +20,51 @@ class IncidentController extends Controller
         protected IncidentService $incidentService,
         protected FolioGeneratorService $folioGenerator
     ) {}
+
+    /**
+     * Muestra el listado general de incidencias con búsqueda en tiempo real y filtrado multidimensional.
+     */
+    public function index(Request $request): View
+    {
+        Gate::authorize('viewAny', Incident::class);
+
+        $filters = $request->only(['search', 'status_id', 'priority_id', 'category_id']);
+
+        $incidents = Incident::with(['category', 'priority', 'status', 'reportedBy', 'assignedTo'])
+            ->filter($filters)
+            ->orderByRaw("
+                CASE 
+                    WHEN status_id IN (SELECT id FROM statuses WHERE code IN ('NUEVA', 'ASIGNADA', 'EN_ATENCION')) THEN 1 
+                    ELSE 2 
+                END ASC
+            ")
+            ->orderBy('created_at', 'desc')
+            ->paginate(15)
+            ->withQueryString();
+
+        $categories = Category::where('is_active', true)->orderBy('name')->get();
+        $priorities = Priority::where('is_active', true)->orderBy('level')->get();
+        $statuses   = Status::orderBy('step_order')->get();
+
+        $metrics = [
+            'total' => Incident::count(),
+            'nuevas' => Incident::whereHas('status', fn($q) => $q->where('code', 'NUEVA'))->count(),
+            'en_atencion' => Incident::whereHas('status', fn($q) => $q->where('code', 'EN_ATENCION'))->count(),
+            'criticas' => Incident::whereHas('priority', fn($q) => $q->where('slug', 'critica'))
+                ->whereHas('status', fn($q) => $q->where('is_terminal', false))
+                ->count(),
+            'resueltas' => Incident::whereHas('status', fn($q) => $q->where('code', 'RESUELTA'))->count(),
+        ];
+
+        return view('incidents.index', compact(
+            'incidents',
+            'categories',
+            'priorities',
+            'statuses',
+            'filters',
+            'metrics'
+        ));
+    }
 
     /**
      * Muestra el formulario para crear y despachar una nueva incidencia.

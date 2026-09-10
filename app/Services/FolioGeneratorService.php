@@ -54,3 +54,4 @@ class FolioGeneratorService
         return sprintf('INC-%04d-%04d', $year, $nextNumber);
     }
 }
+
