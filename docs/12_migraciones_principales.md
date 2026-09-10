@@ -25,3 +25,4 @@
 ### 2. RESULTADO DE EJECUCIÓN
 
 Todas las migraciones se ejecutaron satisfactoriamente mediante `php artisan migrate`, creando 17 tablas relacionales en PostgreSQL con integridad referencial estricta (`ON DELETE RESTRICT` y `ON DELETE CASCADE` en historiales/adjuntos).
+
