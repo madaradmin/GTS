@@ -254,3 +254,4 @@ class AuditTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $stats['resolutions']);
     }
 }
+

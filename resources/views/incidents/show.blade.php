@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6" x-data="{ showAssignModal: false, showResolveModal: false, showRejectModal: false, showCloseModal: false }">
+    <div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6" x-data="{ showAssignModal: false, showResolveModal: false, showRejectModal: false, showCloseModal: false, showUploadModal: false }">
         
         <!-- Notificaciones Flash -->
         @if (session('success'))
@@ -317,42 +317,104 @@
                     </div>
                 </div>
 
-                <!-- Evidencias y Archivos Adjuntos -->
-                @if($incident->attachments->count() > 0)
-                    <div class="bg-surface-subtle border border-border-subtle p-6 rounded-xl shadow-sm flex flex-col gap-4">
-                        <h2 class="text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary text-[18px]">attach_file</span>
-                                <span>Evidencias Adjuntas</span>
-                            </div>
-                            <span class="px-2 py-0.5 rounded bg-surface-container-low text-primary font-mono text-xs">
-                                {{ $incident->attachments->count() }} archivo(s)
+                <!-- Evidencias y Archivos Adjuntos (Fase 6 - Paso 27) -->
+                <div class="bg-surface-subtle border border-border-subtle p-6 rounded-xl shadow-sm flex flex-col gap-4">
+                    <div class="flex items-center justify-between flex-wrap gap-2 pb-1 border-b border-border-subtle">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-primary text-[20px]">attach_file</span>
+                            <h2 class="text-xs font-semibold uppercase tracking-wider text-on-surface">Evidencias y Archivos Adjuntos</h2>
+                            <span class="px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-mono text-xs font-bold border border-border-subtle">
+                                {{ $incident->attachments->count() }}
                             </span>
-                        </h2>
-                        <ul class="divide-y divide-border-subtle border border-border-subtle rounded-xl overflow-hidden bg-surface-container-low">
+                        </div>
+
+                        @can('uploadAttachment', $incident)
+                            <button
+                                type="button"
+                                @click="showUploadModal = true"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high hover:bg-surface-container text-primary hover:text-primary-fixed text-xs font-semibold rounded-xl border border-border-subtle transition-colors cursor-pointer"
+                            >
+                                <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
+                                <span>Adjuntar Evidencia</span>
+                            </button>
+                        @endcan
+                    </div>
+
+                    @if($incident->attachments->count() > 0)
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             @foreach($incident->attachments as $att)
-                                <li class="p-3.5 flex items-center justify-between text-xs text-on-surface hover:bg-surface-container-high transition-colors">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-lg bg-surface-container-high border border-border-subtle flex items-center justify-center text-primary">
-                                            <span class="material-symbols-outlined text-[18px]">
-                                                @if(str_contains($att->mime_type, 'image')) image
-                                                @elseif(str_contains($att->mime_type, 'pdf')) picture_as_pdf
-                                                @else draft @endif
-                                            </span>
+                                <div class="p-3.5 rounded-xl bg-surface-container-low border border-border-subtle hover:border-border-active transition-all flex flex-col justify-between gap-3 shadow-sm">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border {{ $att->file_badge_color }}">
+                                            <span class="material-symbols-outlined text-[20px]">{{ $att->file_icon }}</span>
                                         </div>
-                                        <div class="flex flex-col">
-                                            <span class="font-mono text-on-surface font-medium">{{ $att->original_filename }}</span>
-                                            <span class="text-[11px] text-outline">
-                                                Subido por {{ $att->uploadedBy?->name ?? 'Usuario' }}
+                                        <div class="flex flex-col min-w-0 flex-1">
+                                            <span class="font-mono text-xs font-semibold text-on-surface truncate" title="{{ $att->original_filename }}">
+                                                {{ $att->original_filename }}
+                                            </span>
+                                            <div class="flex items-center gap-2 text-[11px] text-outline mt-0.5">
+                                                <span class="font-mono">{{ $att->formatted_size }}</span>
+                                                <span>•</span>
+                                                <span>{{ $att->created_at->format('d/m/Y H:i') }}</span>
+                                            </div>
+                                            <span class="text-[10px] text-on-surface-variant truncate mt-0.5">
+                                                Por: {{ $att->uploadedBy?->name ?? 'Usuario' }}
                                             </span>
                                         </div>
                                     </div>
-                                    <span class="text-outline font-mono text-xs">{{ number_format($att->file_size_bytes / 1024, 1) }} KB</span>
-                                </li>
+
+                                    @if($att->is_image)
+                                        <div class="rounded-lg overflow-hidden border border-border-subtle bg-surface-base max-h-36 flex items-center justify-center">
+                                            <img
+                                                src="{{ route('incidents.attachments.show', [$incident, $att]) }}"
+                                                alt="{{ $att->original_filename }}"
+                                                class="w-full h-auto object-cover max-h-36 hover:scale-105 transition-transform duration-200 cursor-pointer"
+                                                onclick="window.open(this.src, '_blank')"
+                                            />
+                                        </div>
+                                    @endif
+
+                                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-border-subtle/50">
+                                        <a
+                                            href="{{ route('incidents.attachments.show', [$incident, $att]) }}"
+                                            target="_blank"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant hover:text-primary bg-surface-container-high hover:bg-surface-container rounded-lg border border-border-subtle transition-colors"
+                                            title="Visualizar en pestaña nueva"
+                                        >
+                                            <span class="material-symbols-outlined text-[14px]">visibility</span>
+                                            <span>Ver</span>
+                                        </a>
+                                        <a
+                                            href="{{ route('incidents.attachments.download', [$incident, $att]) }}"
+                                            class="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-on-primary bg-primary hover:bg-primary/90 rounded-lg shadow-sm transition-all"
+                                            title="Descargar archivo físico"
+                                        >
+                                            <span class="material-symbols-outlined text-[14px]">download</span>
+                                            <span>Descargar</span>
+                                        </a>
+                                    </div>
+                                </div>
                             @endforeach
-                        </ul>
-                    </div>
-                @endif
+                        </div>
+                    @else
+                        <div class="p-6 rounded-xl bg-surface-container-low border border-border-subtle/70 flex flex-col items-center justify-center text-center gap-2">
+                            <div class="w-10 h-10 rounded-full bg-surface-container-high text-outline flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[22px]">folder_open</span>
+                            </div>
+                            <span class="text-xs font-semibold text-on-surface">No hay evidencias adjuntas</span>
+                            <p class="text-[11px] text-outline max-w-sm">
+                                Este expediente no cuenta con capturas de error, bitácoras o archivos de respaldo.
+                            </p>
+                        </div>
+                    @endif
+
+                    @if($incident->status->code === 'CERRADA')
+                        <div class="p-2.5 rounded-lg bg-slate-800/60 border border-slate-700 text-slate-400 text-[11px] flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px] text-slate-400">lock</span>
+                            <span>Expediente archivado en modo inmutable. No se permite la carga de nuevas evidencias.</span>
+                        </div>
+                    @endif
+                </div>
 
                 <!-- Caja de Registro de Notas Técnicas de Campo (Paso 22 - Solo cuando está EN_ATENCION) -->
                 @can('addNote', $incident)
@@ -899,6 +961,82 @@
                         >
                             <span class="material-symbols-outlined text-[18px]">verified</span>
                             <span>Confirmar Cierre y Conformidad</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal: Adjuntar Nuevas Evidencias (Paso 27) -->
+        <div
+            x-show="showUploadModal"
+            x-cloak
+            class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            @keydown.escape.window="showUploadModal = false"
+        >
+            <div
+                class="bg-surface-subtle border border-border-subtle rounded-2xl w-full max-w-lg p-6 shadow-2xl flex flex-col gap-5 text-on-surface"
+                @click.outside="showUploadModal = false"
+            >
+                <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                            <span class="material-symbols-outlined text-[20px]">cloud_upload</span>
+                        </div>
+                        <div class="flex flex-col">
+                            <h3 class="text-sm font-bold text-on-surface">Adjuntar Nuevas Evidencias</h3>
+                            <span class="text-[11px] text-outline">Expediente {{ $incident->folio }}</span>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        @click="showUploadModal = false"
+                        class="p-1 rounded-lg text-outline hover:text-on-surface hover:bg-surface-container transition-colors"
+                    >
+                        <span class="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+
+                <form method="POST" action="{{ route('incidents.attachments.store', $incident) }}" enctype="multipart/form-data" class="flex flex-col gap-4">
+                    @csrf
+
+                    <div class="p-3 bg-surface-container-low rounded-xl border border-border-subtle text-xs text-on-surface-variant flex items-start gap-2.5">
+                        <span class="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">info</span>
+                        <p class="leading-relaxed text-[11px]">
+                            Los archivos se resguardarán en almacenamiento privado no accesible públicamente. Formatos permitidos: <strong class="text-on-surface">JPG, PNG, PDF, TXT</strong> (máx. 10 MB por archivo, hasta 5 archivos).
+                        </p>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label for="modal_attachments" class="text-xs font-semibold text-on-surface">
+                            Seleccionar Archivos de Respaldo <span class="text-status-critical">*</span>
+                        </label>
+                        <input
+                            type="file"
+                            id="modal_attachments"
+                            name="attachments[]"
+                            multiple
+                            required
+                            accept=".jpg,.jpeg,.png,.pdf,.txt"
+                            class="w-full px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-surface-container-high file:text-primary hover:file:bg-surface-container cursor-pointer shadow-inner"
+                        />
+                    </div>
+
+                    <!-- Botones de Acción Modal -->
+                    <div class="flex items-center justify-end gap-3 pt-2">
+                        <button
+                            type="button"
+                            @click="showUploadModal = false"
+                            class="px-4 py-2 bg-surface-container-high hover:bg-surface-container text-on-surface font-semibold text-xs rounded-xl border border-border-subtle transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            class="px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span class="material-symbols-outlined text-[18px]">cloud_upload</span>
+                            <span>Subir y Resguardar</span>
                         </button>
                     </div>
                 </form>

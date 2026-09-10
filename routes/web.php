@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\IncidentAttachmentController;
 use App\Http\Controllers\IncidentController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -28,6 +29,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Módulo de Trazabilidad y Auditoría (Fase 6 - Paso 26)
     Route::get('/auditoria', [AuditController::class, 'index'])->name('audit.index');
+
+    // Módulo de Evidencias y Archivos Adjuntos (Fase 6 - Paso 27)
+    Route::post('/incidencias/{incident}/adjuntos', [IncidentAttachmentController::class, 'store'])->name('incidents.attachments.store');
+    Route::get('/incidencias/{incident}/adjuntos/{attachment}/ver', [IncidentAttachmentController::class, 'show'])->name('incidents.attachments.show');
+    Route::get('/incidencias/{incident}/adjuntos/{attachment}/descargar', [IncidentAttachmentController::class, 'download'])->name('incidents.attachments.download');
 });
 
 Route::middleware('auth')->group(function () {

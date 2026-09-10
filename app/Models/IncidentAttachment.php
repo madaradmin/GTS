@@ -41,5 +41,66 @@ class IncidentAttachment extends Model
     {
         return $this->belongsTo(User::class, 'uploaded_by_user_id');
     }
-}
 
+    /**
+     * Retorna el tamaño del archivo formateado en unidades legibles (B, KB, MB).
+     */
+    public function getFormattedSizeAttribute(): string
+    {
+        $bytes = $this->file_size_bytes ?? 0;
+        if ($bytes >= 1048576) {
+            return number_format($bytes / 1048576, 1) . ' MB';
+        }
+        if ($bytes >= 1024) {
+            return number_format($bytes / 1024, 0) . ' KB';
+        }
+        return $bytes . ' B';
+    }
+
+    /**
+     * Determina si el archivo es una imagen rasterizada visualizable.
+     */
+    public function getIsImageAttribute(): bool
+    {
+        return str_starts_with($this->mime_type ?? '', 'image/');
+    }
+
+    /**
+     * Determina si el archivo es un documento PDF.
+     */
+    public function getIsPdfAttribute(): bool
+    {
+        return ($this->mime_type ?? '') === 'application/pdf';
+    }
+
+    /**
+     * Retorna el nombre del icono de Google Material Symbols correspondiente.
+     */
+    public function getFileIconAttribute(): string
+    {
+        if ($this->is_image) {
+            return 'image';
+        }
+        if ($this->is_pdf) {
+            return 'picture_as_pdf';
+        }
+        if (str_contains($this->mime_type ?? '', 'text')) {
+            return 'description';
+        }
+        return 'attach_file';
+    }
+
+    /**
+     * Retorna las clases de color Tailwind para el badge táctico según el formato del archivo.
+     */
+    public function getFileBadgeColorAttribute(): string
+    {
+        if ($this->is_image) {
+            return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30';
+        }
+        if ($this->is_pdf) {
+            return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+        }
+        return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+    }
+}

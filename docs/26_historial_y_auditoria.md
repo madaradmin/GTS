@@ -263,3 +263,4 @@ php artisan test
 * [x] Suite global de pruebas ejecutada con éxito (108 tests, 367 aserciones, 100% verde).
 * [x] Base de datos de desarrollo `git_incidentes` sembrada de forma consistente con `php artisan db:seed`.
 * [x] **Paso 26 completado en su totalidad.**
+

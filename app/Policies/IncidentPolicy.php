@@ -128,6 +128,15 @@ class IncidentPolicy
     }
 
     /**
+     * Determina si el usuario puede cargar nuevas evidencias a la incidencia.
+     * Permitido a usuarios activos cuando la incidencia no está cerrada e inmutable.
+     */
+    public function uploadAttachment(User $user, Incident $incident): bool
+    {
+        return $user->is_active && $incident->status->code !== 'CERRADA';
+    }
+
+    /**
      * Eliminación de incidencias prohibida por normativa aeronáutica.
      */
     public function delete(User $user, Incident $incident): bool
