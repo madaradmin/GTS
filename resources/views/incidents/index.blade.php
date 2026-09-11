@@ -40,11 +40,11 @@
             <div class="bg-surface-subtle border border-border-subtle p-4 rounded-xl flex items-center justify-between shadow-sm">
                 <div class="flex flex-col">
                     <span class="text-xs text-outline uppercase font-medium">Nuevas sin atender</span>
-                    <span class="font-mono text-xl sm:text-2xl text-blue-400 font-bold mt-0.5">
+                    <span class="font-mono text-xl sm:text-2xl text-[#3D82C6] font-bold mt-0.5">
                         {{ sprintf('%02d', $metrics['nuevas'] ?? 0) }}
                     </span>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-lg bg-[#123A70]/30 text-[#3D82C6] flex items-center justify-center">
                     <span class="material-symbols-outlined text-[22px]">inbox</span>
                 </div>
             </div>
@@ -52,11 +52,11 @@
             <div class="bg-surface-subtle border border-border-subtle p-4 rounded-xl flex items-center justify-between shadow-sm">
                 <div class="flex flex-col">
                     <span class="text-xs text-outline uppercase font-medium">En Atención GTS</span>
-                    <span class="font-mono text-xl sm:text-2xl text-amber-400 font-bold mt-0.5">
+                    <span class="font-mono text-xl sm:text-2xl text-[#E0A21A] font-bold mt-0.5">
                         {{ sprintf('%02d', $metrics['en_atencion'] ?? 0) }}
                     </span>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-lg bg-[#E0A21A]/15 text-[#E0A21A] flex items-center justify-center">
                     <span class="material-symbols-outlined text-[22px]">pending_actions</span>
                 </div>
             </div>
@@ -76,11 +76,11 @@
             <div class="bg-surface-subtle border border-border-subtle p-4 rounded-xl flex items-center justify-between shadow-sm">
                 <div class="flex flex-col">
                     <span class="text-xs text-outline uppercase font-medium">Resueltas</span>
-                    <span class="font-mono text-xl sm:text-2xl text-emerald-400 font-bold mt-0.5">
+                    <span class="font-mono text-xl sm:text-2xl text-[#20C997] font-bold mt-0.5">
                         {{ sprintf('%02d', $metrics['resueltas'] ?? 0) }}
                     </span>
                 </div>
-                <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                <div class="w-10 h-10 rounded-lg bg-[#20C997]/15 text-[#20C997] flex items-center justify-center">
                     <span class="material-symbols-outlined text-[22px]">task_alt</span>
                 </div>
             </div>
@@ -231,12 +231,11 @@
                                 <!-- Prioridad -->
                                 <td class="py-3.5 px-4 whitespace-nowrap">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-[11px] uppercase tracking-wider
-                                        @if($incident->priority->slug === 'critica') bg-status-critical/15 text-status-critical border border-status-critical/30
-                                        @elseif($incident->priority->slug === 'alta') bg-amber-500/15 text-amber-400 border border-amber-500/30
-                                        @elseif($incident->priority->slug === 'media') bg-blue-500/15 text-blue-400 border border-blue-500/30
-                                        @else bg-slate-500/15 text-slate-400 border border-slate-500/30 @endif">
+                                        @if($incident->priority->slug === 'critica' || $incident->priority->slug === 'alta') bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]
+                                        @elseif($incident->priority->slug === 'media') bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]
+                                        @else bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)] @endif">
                                         @if($incident->priority->slug === 'critica')
-                                            <span class="w-1.5 h-1.5 rounded-full bg-status-critical animate-pulse"></span>
+                                             <span class="w-1.5 h-1.5 rounded-full bg-[#D83B52] animate-pulse"></span>
                                         @endif
                                         {{ $incident->priority->name }}
                                     </span>
@@ -245,13 +244,12 @@
                                 <!-- Estado -->
                                 <td class="py-3.5 px-4 whitespace-nowrap">
                                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-[11px] uppercase tracking-wider
-                                        @if($incident->status->code === 'NUEVA') bg-blue-500/15 text-blue-400 border border-blue-500/30
-                                        @elseif($incident->status->code === 'ASIGNADA') bg-purple-500/15 text-purple-400 border border-purple-500/30
-                                        @elseif($incident->status->code === 'EN_ATENCION') bg-amber-500/15 text-amber-400 border border-amber-500/30
-                                        @elseif($incident->status->code === 'RESUELTA') bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
-                                        @else bg-slate-500/15 text-slate-400 border border-slate-500/30 @endif">
-                                        @if($incident->status->code === 'EN_ATENCION')
-                                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                        @if($incident->status->code === 'NUEVA' || $incident->status->code === 'ASIGNADA') bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)]
+                                        @elseif($incident->status->code === 'EN_ATENCION' || $incident->status->code === 'EN_PROCESO') bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]
+                                        @elseif($incident->status->code === 'RESUELTA') bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]
+                                        @else bg-[#151A21] text-[#9AA5B4] border border-[#252C35] @endif">
+                                        @if($incident->status->code === 'EN_ATENCION' || $incident->status->code === 'EN_PROCESO')
+                                            <span class="w-1.5 h-1.5 rounded-full bg-[#E0A21A] animate-pulse"></span>
                                         @endif
                                         {{ $incident->status->name }}
                                     </span>

@@ -21,8 +21,8 @@
         <!-- Header Superior -->
         <header class="h-16 px-6 lg:px-12 border-b border-brand-border bg-brand-topbar/80 backdrop-blur flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-brand-primary-muted/40 border border-blue-500/30 flex items-center justify-center shadow-enterprise-sm">
-                    <x-application-logo class="w-5 h-5 text-brand-primary" />
+                <div class="w-9 h-9 rounded-xl bg-brand-primary-muted/40 border border-[#164A8A]/40 flex items-center justify-center shadow-enterprise-sm">
+                    <x-application-logo class="w-5 h-5 text-[#3D82C6]" />
                 </div>
                 <div class="flex flex-col">
                     <span class="font-bold text-sm text-brand-text-primary tracking-wider leading-none">
@@ -61,7 +61,7 @@
                 
                 <!-- Badge Superior -->
                 <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-surface border border-brand-border text-xs text-brand-text-secondary shadow-enterprise-sm">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="w-2 h-2 rounded-full bg-[#20C997] animate-pulse"></span>
                     <span class="font-mono text-[11px]">SISTEMA EN LÍNEA • OPERACIÓN CRÍTICA AIFA</span>
                 </div>
 
@@ -78,19 +78,19 @@
                 <!-- 3 Pilares Tecnológicos -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full text-left mt-2">
                     <div class="p-4 bg-brand-surface border border-brand-border rounded-xl shadow-enterprise flex flex-col gap-2">
-                        <span class="material-symbols-outlined text-blue-400 text-[24px]">terminal</span>
+                        <span class="material-symbols-outlined text-[#3D82C6] text-[24px]">terminal</span>
                         <h2 class="text-xs font-bold text-brand-text-primary uppercase tracking-wider">APOC & GTS</h2>
                         <p class="text-[11px] text-brand-text-muted leading-relaxed">Coordinación en tiempo real entre el centro de mando APOC y las cuadrillas de campo GTS.</p>
                     </div>
 
                     <div class="p-4 bg-brand-surface border border-brand-border rounded-xl shadow-enterprise flex flex-col gap-2">
-                        <span class="material-symbols-outlined text-amber-400 text-[24px]">timer</span>
+                        <span class="material-symbols-outlined text-[#E0A21A] text-[24px]">timer</span>
                         <h2 class="text-xs font-bold text-brand-text-primary uppercase tracking-wider">Control de SLA</h2>
                         <p class="text-[11px] text-brand-text-muted leading-relaxed">Métricas de MTTR calculadas positivamente, colas de atención inmediata y semáforos periciales.</p>
                     </div>
 
                     <div class="p-4 bg-brand-surface border border-brand-border rounded-xl shadow-enterprise flex flex-col gap-2">
-                        <span class="material-symbols-outlined text-emerald-400 text-[24px]">verified_user</span>
+                        <span class="material-symbols-outlined text-[#20C997] text-[24px]">verified_user</span>
                         <h2 class="text-xs font-bold text-brand-text-primary uppercase tracking-wider">Auditoría OACI</h2>
                         <p class="text-[11px] text-brand-text-muted leading-relaxed">Bitácora inmutable en tiempo real con evidencia técnica documental y dictamen pericial.</p>
                     </div>

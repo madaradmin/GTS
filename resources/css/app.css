@@ -1,22 +1,49 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
     :root {
-        --canvas-base: #070d1e;
-        --sidebar-base: #091126;
-        --topbar-base: #080f24;
-        --surface-card: #0c1633;
-        --surface-subtle: #101c40;
-        --surface-hover: #14234d;
-        --border-card: #19274e;
-        --border-subtle: #131f3f;
-        --color-primary: #1b64f2;
-        --color-primary-hover: #1551c6;
-        --text-primary: #f8fafc;
-        --text-secondary: #94a3b8;
-        --text-muted: #64748b;
+        /* Paleta Centralizada GTS — Grupo de Seguridad Tecnológica */
+        --gts-bg: #05070A;
+        --gts-bg-secondary: #0A0D12;
+
+        --gts-surface: #11151B;
+        --gts-surface-secondary: #151A21;
+        --gts-surface-elevated: #191F27;
+
+        --gts-border: #252C35;
+        --gts-border-subtle: #1B2129;
+
+        --gts-blue: #123A70;
+        --gts-blue-hover: #164A8A;
+        --gts-blue-light: #1B5AA3;
+        --gts-blue-accent: #1E64B7;
+
+        --gts-text-primary: #F2F5F8;
+        --gts-text-secondary: #9AA5B4;
+        --gts-text-tertiary: #707B8A;
+        --gts-text-disabled: #505A68;
+
+        --gts-success: #20C997;
+        --gts-warning: #E0A21A;
+        --gts-danger: #D83B52;
+        --gts-info: #3D82C6;
+
+        /* Variables existentes calibradas */
+        --canvas-base: #05070A;
+        --sidebar-base: #070A0F;
+        --topbar-base: #070A0F;
+        --surface-card: #11151B;
+        --surface-subtle: #151A21;
+        --surface-hover: #151B23;
+        --border-card: #252C35;
+        --border-subtle: #1B2129;
+        --color-primary: #123A70;
+        --color-primary-hover: #164A8A;
+        --text-primary: #F2F5F8;
+        --text-secondary: #9AA5B4;
+        --text-muted: #707B8A;
     }
 
     body {
@@ -35,15 +62,16 @@
 }
 
 @layer components {
-    /* Contenedor de Tarjeta Enterprise SITIA / AIFA */
+    /* Contenedor de Tarjeta Enterprise GTS */
     .card-enterprise {
-        background-color: #0c1633;
-        border: 1px solid #19274e;
+        background-color: #11151B;
+        border: 1px solid #252C35;
         border-radius: 0.875rem;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     }
     .card-enterprise:hover {
-        border-color: #223566;
+        border-color: #2A3440;
     }
 
     /* Tipografía de Folios e Identificadores Aeroportuarios */
@@ -61,18 +89,18 @@
         justify-content: center;
         gap: 0.5rem;
         padding: 0.5rem 1rem;
-        background-color: #1b64f2;
+        background-color: #123A70;
         color: #ffffff;
         font-weight: 600;
         font-size: 0.8125rem;
         border-radius: 0.625rem;
         border: 1px solid rgba(255, 255, 255, 0.1);
         transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
     }
     .btn-enterprise-primary:hover {
-        background-color: #1551c6;
-        box-shadow: 0 0 12px -2px rgba(27, 100, 242, 0.45);
+        background-color: #164A8A;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
     }
     .btn-enterprise-primary:active {
         transform: scale(0.98);
@@ -86,14 +114,15 @@
         width: 100%;
         padding: 0.625rem 0.875rem;
         border-radius: 0.75rem;
-        background-color: rgba(16, 28, 64, 0.7);
-        border: 1px solid #19274e;
+        background-color: #0F141B;
+        border: 1px solid #252C35;
+        color: #E2E7ED;
         transition: all 0.15s ease-in-out;
         text-align: left;
     }
     .btn-quick-action:hover {
-        background-color: rgba(20, 35, 77, 0.9);
-        border-color: rgba(27, 100, 242, 0.5);
+        background-color: #171D25;
+        border-color: #2A3440;
     }
 
     .btn-enterprise-secondary {
@@ -102,18 +131,18 @@
         justify-content: center;
         gap: 0.5rem;
         padding: 0.5rem 1rem;
-        background-color: #101c40;
-        color: #94a3b8;
+        background-color: #151A21;
+        color: #9AA5B4;
         font-weight: 500;
         font-size: 0.8125rem;
         border-radius: 0.625rem;
-        border: 1px solid #19274e;
+        border: 1px solid #252C35;
         transition: all 0.15s ease;
     }
     .btn-enterprise-secondary:hover {
-        background-color: #14234d;
-        color: #f8fafc;
-        border-color: #223566;
+        background-color: #151B23;
+        color: #F2F5F8;
+        border-color: #2A3440;
     }
 
     /* Micro-puntos de Estado Operacional con Pulso */
@@ -149,10 +178,10 @@
         background: transparent;
     }
     .scrollbar-thin::-webkit-scrollbar-thumb {
-        background: #19274e;
+        background: #252C35;
         border-radius: 9999px;
     }
     .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-        background: #223566;
+        background: #2A3440;
     }
 }

@@ -40,7 +40,7 @@
 
             <!-- Footer Táctico -->
             <div class="flex items-center gap-2 text-[11px] font-mono text-brand-text-muted">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span class="w-1.5 h-1.5 rounded-full bg-[#20C997]"></span>
                 <span>NOC / APOC • Sistema Operativo Seguro</span>
             </div>
         </div>

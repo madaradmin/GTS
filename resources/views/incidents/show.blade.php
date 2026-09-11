@@ -30,25 +30,23 @@
 
                     <!-- Badge de Estado -->
                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold text-xs uppercase tracking-wider
-                        @if($incident->status->code === 'NUEVA') bg-blue-500/15 text-blue-400 border border-blue-500/30
-                        @elseif($incident->status->code === 'ASIGNADA') bg-purple-500/15 text-purple-400 border border-purple-500/30
-                        @elseif($incident->status->code === 'EN_ATENCION') bg-amber-500/15 text-amber-400 border border-amber-500/30
-                        @elseif($incident->status->code === 'RESUELTA') bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
-                        @else bg-slate-500/15 text-slate-400 border border-slate-500/30 @endif">
-                        @if($incident->status->code === 'EN_ATENCION')
-                            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        @if($incident->status->code === 'NUEVA' || $incident->status->code === 'ASIGNADA') bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)]
+                        @elseif($incident->status->code === 'EN_ATENCION' || $incident->status->code === 'EN_PROCESO') bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]
+                        @elseif($incident->status->code === 'RESUELTA') bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]
+                        @else bg-[#151A21] text-[#9AA5B4] border border-[#252C35] @endif">
+                        @if($incident->status->code === 'EN_ATENCION' || $incident->status->code === 'EN_PROCESO')
+                            <span class="w-2 h-2 rounded-full bg-[#E0A21A] animate-pulse"></span>
                         @endif
                         {{ $incident->status->name }}
                     </span>
 
                     <!-- Badge de Prioridad -->
                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold text-xs uppercase tracking-wider
-                        @if($incident->priority->slug === 'critica') bg-status-critical/15 text-status-critical border border-status-critical/30
-                        @elseif($incident->priority->slug === 'alta') bg-amber-500/15 text-amber-400 border border-amber-500/30
-                        @elseif($incident->priority->slug === 'media') bg-blue-500/15 text-blue-400 border border-blue-500/30
-                        @else bg-slate-500/15 text-slate-400 border border-slate-500/30 @endif">
+                        @if($incident->priority->slug === 'critica' || $incident->priority->slug === 'alta') bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]
+                        @elseif($incident->priority->slug === 'media') bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]
+                        @else bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)] @endif">
                         @if($incident->priority->slug === 'critica')
-                            <span class="w-2 h-2 rounded-full bg-status-critical animate-pulse"></span>
+                            <span class="w-2 h-2 rounded-full bg-[#D83B52] animate-pulse"></span>
                         @endif
                         {{ $incident->priority->name }}
                     </span>
@@ -209,7 +207,7 @@
                 <!-- Paso 1: Nueva -->
                 @php $sOrder = $incident->status->step_order; @endphp
                 <div class="p-3 rounded-lg flex items-center gap-3 {{ $sOrder >= 1 ? 'bg-surface-container-low border border-border-subtle' : 'opacity-40' }}">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs {{ $sOrder > 1 ? 'bg-status-resolved/20 text-status-resolved' : ($sOrder === 1 ? 'bg-blue-500/20 text-blue-400 ring-2 ring-blue-500/30' : 'bg-surface-container-high text-outline') }}">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs {{ $sOrder > 1 ? 'bg-status-resolved/20 text-status-resolved' : ($sOrder === 1 ? 'bg-[#123A70]/30 text-[#3D82C6] ring-2 ring-[#164A8A]/40' : 'bg-surface-container-high text-outline') }}">
                         @if($sOrder > 1) <span class="material-symbols-outlined text-[18px]">check</span> @else 1 @endif
                     </div>
                     <div class="flex flex-col min-w-0">
@@ -298,8 +296,8 @@
                         </div>
 
                         @if($incident->status->code === 'RESUELTA')
-                            <div class="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20 text-xs text-blue-300 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-[18px] text-blue-400">pending_actions</span>
+                            <div class="p-3 bg-[#123A70]/25 rounded-lg border border-[#164A8A]/40 text-xs text-[#A8C4E6] flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[18px] text-[#3D82C6]">pending_actions</span>
                                 <span>En espera de validación de servicio y visto bueno por el Centro de Operaciones (APOC) para proceder con el cierre formal del ticket.</span>
                             </div>
                         @endif
@@ -474,7 +472,7 @@
                                      @elseif($h->action === 'RESUELTA') border-emerald-400 bg-emerald-400/30
                                      @elseif($h->action === 'RECHAZO_SOLUCION') border-rose-500 bg-rose-500/30
                                      @elseif($h->action === 'CERRADA') border-primary bg-primary/30
-                                     @elseif($h->action === 'CAMBIO_ESTADO') border-blue-400
+                                     @elseif($h->action === 'CAMBIO_ESTADO') border-[#3D82C6]
                                      @else border-primary @endif">
                                 </div>
 
@@ -484,7 +482,7 @@
                                         @elseif($h->action === 'RESUELTA') bg-emerald-500/15 text-emerald-400 border border-emerald-500/30
                                         @elseif($h->action === 'RECHAZO_SOLUCION') bg-rose-500/15 text-rose-400 border border-rose-500/30
                                         @elseif($h->action === 'CERRADA') bg-primary/15 text-primary border border-primary/30
-                                        @elseif($h->action === 'CAMBIO_ESTADO') bg-blue-500/15 text-blue-400 border border-blue-500/30
+                                        @elseif($h->action === 'CAMBIO_ESTADO') bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)]
                                         @elseif($h->action === 'ASIGNADA' || $h->action === 'REASIGNADA') bg-purple-500/15 text-purple-400 border border-purple-500/30
                                         @else bg-surface-container-high text-primary border border-border-subtle @endif">
                                         {{ $h->action }}
