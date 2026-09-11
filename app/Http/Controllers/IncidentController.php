@@ -122,7 +122,9 @@ class IncidentController extends Controller
 
         $gtsUsers = User::where('is_active', true)
             ->whereHas('role', fn($q) => $q->where('slug', 'gts'))
-            ->orderBy('name')
+            ->with('role')
+            ->orderByRaw("CASE WHEN shift_status = 'ACTIVO' THEN 1 ELSE 2 END ASC")
+            ->orderBy('name', 'asc')
             ->get();
 
         return view('incidents.show', compact('incident', 'gtsUsers'));
@@ -144,9 +146,14 @@ class IncidentController extends Controller
             comment: $request->validated('comment')
         );
 
-        $message = $request->user()->id === $technician->id
-            ? "Has tomado la responsabilidad técnica de la incidencia {$incident->folio}."
-            : "Incidencia {$incident->folio} asignada al especialista {$technician->name} exitosamente.";
+        $isSelfAssign = $request->user()->id === $technician->id;
+        $statusNote = $technician->isShiftUnavailable()
+            ? " (Nota de disponibilidad: El especialista se encuentra actualmente marcado como NO DISPONIBLE)."
+            : "";
+
+        $message = $isSelfAssign
+            ? "Has tomado la responsabilidad técnica de la incidencia {$incident->folio}.{$statusNote}"
+            : "Incidencia {$incident->folio} asignada al especialista {$technician->name} exitosamente.{$statusNote}";
 
         return redirect()->route('incidents.show', $incident->folio)
             ->with('success', $message);

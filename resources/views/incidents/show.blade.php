@@ -556,9 +556,21 @@
                             <div class="flex flex-col min-w-0">
                                 <span class="font-semibold text-xs text-on-surface truncate">{{ $incident->assignedTo->name }}</span>
                                 <span class="text-[11px] text-outline font-mono">{{ $incident->assignedTo->email }}</span>
-                                <div class="flex items-center gap-1.5 mt-0.5">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-status-resolved"></span>
-                                    <span class="text-[10px] text-status-resolved font-medium">Especialista de Guardia</span>
+                                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                    @if($incident->assignedTo->isShiftActive())
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                            <span>🟢</span>
+                                            <span>Activo / Disponible</span>
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-700/40 text-slate-300 border border-slate-600">
+                                            <span>⚪</span>
+                                            <span>No disponible</span>
+                                        </span>
+                                    @endif
+                                    <span class="text-[10px] text-outline font-mono">
+                                        {{ $incident->assignedTo->role?->name ?? 'GTS' }}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -626,15 +638,39 @@
 
         </div>
 
-        <!-- 4. Modal de Asignación / Reasignación de Especialista -->
+        <!-- 4. Modal de Asignación / Reasignación de Especialista (Paso 9) -->
+        @php
+            $activeTechs = $gtsUsers->filter(fn($u) => $u->isShiftActive());
+            $unavailableTechs = $gtsUsers->filter(fn($u) => $u->isShiftUnavailable());
+            $initialSelectedId = ($incident->assignedTo && $incident->assignedTo->isShiftActive()) ? (string)$incident->assigned_to_user_id : '';
+        @endphp
         <div
             x-show="showAssignModal"
             x-cloak
+            x-data="{
+                selectedTechId: '{{ $initialSelectedId }}',
+                techs: {{ $gtsUsers->mapWithKeys(fn($u) => [$u->id => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'badge_number' => $u->badge_number ?? 'GTS',
+                    'role' => $u->role?->name ?? 'Especialista GTS',
+                    'shift_status' => $u->shift_status ?? 'ACTIVO',
+                    'is_active' => $u->isShiftActive(),
+                    'updated_at' => $u->shift_status_updated_at ? $u->shift_status_updated_at->format('d/m/Y H:i') : 'Sin registro',
+                    'updated_at_diff' => $u->shift_status_updated_at ? $u->shift_status_updated_at->diffForHumans() : 'N/D',
+                ]])->toJson() }},
+                get selectedTech() {
+                    return this.techs[this.selectedTechId] || null;
+                },
+                get isUnavailable() {
+                    return this.selectedTech && this.selectedTech.shift_status === 'NO DISPONIBLE';
+                }
+            }"
             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-base/80 backdrop-blur-sm"
             @keydown.escape.window="showAssignModal = false"
         >
             <div
-                class="bg-surface-subtle border border-border-subtle w-full max-w-md rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+                class="bg-surface-subtle border border-border-subtle w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
                 @click.outside="showAssignModal = false"
             >
                 <div class="flex items-center justify-between pb-2 border-b border-border-subtle">
@@ -658,29 +694,119 @@
 
                     <!-- Selector de Técnico -->
                     <div class="flex flex-col gap-1.5">
-                        <label for="modal_assigned_to_user_id" class="text-xs font-semibold text-on-surface">
-                            Seleccionar Especialista Técnico GTS <span class="text-status-critical">*</span>
+                        <label for="modal_assigned_to_user_id" class="text-xs font-semibold text-on-surface flex items-center justify-between">
+                            <span>Seleccionar Especialista Técnico GTS <span class="text-status-critical">*</span></span>
+                            <span class="text-[11px] text-outline font-normal">
+                                Disponibles: <strong class="text-emerald-400">{{ $activeTechs->count() }}</strong> | No disponibles: <strong class="text-outline">{{ $unavailableTechs->count() }}</strong>
+                            </span>
                         </label>
                         <div class="relative">
                             <select
                                 id="modal_assigned_to_user_id"
                                 name="assigned_to_user_id"
+                                x-model="selectedTechId"
                                 required
                                 class="w-full appearance-none px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-9 cursor-pointer shadow-inner"
                             >
-                                <option value="" disabled {{ $incident->assigned_to_user_id ? '' : 'selected' }}>
-                                    Seleccionar técnico disponible...
+                                <option value="" disabled :selected="!selectedTechId">
+                                    -- Seleccionar especialista técnico GTS --
                                 </option>
-                                @foreach($gtsUsers as $tech)
-                                    <option value="{{ $tech->id }}" {{ $incident->assigned_to_user_id == $tech->id ? 'selected' : '' }}>
-                                        {{ $tech->name }} ({{ $tech->badge_number ?? 'GTS' }})
-                                    </option>
-                                @endforeach
+
+                                @if($activeTechs->isNotEmpty())
+                                    <optgroup label="🟢 Especialistas Activos / Disponibles ({{ $activeTechs->count() }})">
+                                        @foreach($activeTechs as $tech)
+                                            <option value="{{ $tech->id }}">
+                                                🟢 {{ $tech->name }} ({{ $tech->badge_number ?? 'GTS' }}) — Disponible
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+
+                                @if($unavailableTechs->isNotEmpty())
+                                    <optgroup label="⚪ Especialistas No Disponibles ({{ $unavailableTechs->count() }})">
+                                        @foreach($unavailableTechs as $tech)
+                                            <option value="{{ $tech->id }}">
+                                                ⚪ {{ $tech->name }} ({{ $tech->badge_number ?? 'GTS' }}) — No disponible
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
                             </select>
                             <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
                                 expand_more
                             </span>
                         </div>
+                    </div>
+
+                    <!-- Ficha Detallada de Disponibilidad del Especialista Seleccionado -->
+                    <div x-show="selectedTech" class="flex flex-col gap-2">
+                        <div 
+                            class="p-3.5 rounded-xl border transition-all flex flex-col gap-2.5"
+                            :class="isUnavailable 
+                                ? 'bg-amber-950/20 border-amber-500/30' 
+                                : 'bg-surface-container-low border-border-subtle'"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div 
+                                        class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0"
+                                        :class="isUnavailable 
+                                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
+                                            : 'bg-primary/15 text-primary border border-primary/30'"
+                                    >
+                                        <span class="material-symbols-outlined text-[20px]" x-text="isUnavailable ? 'person_off' : 'engineering'"></span>
+                                    </div>
+                                    <div class="flex flex-col min-w-0">
+                                        <span class="text-xs font-bold text-on-surface truncate" x-text="selectedTech.name + ' (' + selectedTech.badge_number + ')'"></span>
+                                        <span class="text-[11px] text-outline truncate" x-text="'Rol: ' + selectedTech.role"></span>
+                                    </div>
+                                </div>
+
+                                <!-- Badge de Estado de Turno -->
+                                <span 
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide shrink-0"
+                                    :class="isUnavailable 
+                                        ? 'bg-slate-700/50 text-slate-300 border border-slate-600' 
+                                        : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'"
+                                >
+                                    <span x-text="isUnavailable ? '⚪' : '🟢'"></span>
+                                    <span x-text="isUnavailable ? 'No disponible' : 'Activo'"></span>
+                                </span>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-2 border-t border-border-subtle/50 text-[11px]">
+                                <span class="text-outline">Última actualización de turno:</span>
+                                <span class="font-mono text-on-surface-variant" x-text="selectedTech.updated_at + ' (' + selectedTech.updated_at_diff + ')'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Advertencia Operacional en Tiempo Real (Agente No Disponible) -->
+                        <div x-show="isUnavailable" class="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 flex items-start gap-3 shadow-md animate-in fade-in duration-200">
+                            <span class="material-symbols-outlined text-[22px] text-amber-400 shrink-0 mt-0.5">warning</span>
+                            <div class="flex flex-col gap-1 text-xs">
+                                <span class="font-bold text-amber-300 flex items-center gap-1.5">
+                                    Advertencia de Asignación Operacional
+                                </span>
+                                <p class="text-amber-200 leading-relaxed font-medium">
+                                    El agente seleccionado no está marcado como disponible (estado actual: <strong>NO DISPONIBLE</strong>).
+                                </p>
+                                <p class="text-[11px] text-amber-300/80 leading-normal">
+                                    Como usuario autorizado puede proceder con la asignación si existe una justificación operativa o requerimiento de guardia.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Confirmación de Disponibilidad (Agente Activo) -->
+                        <div x-show="!isUnavailable" class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 flex items-center gap-2 text-xs">
+                            <span class="material-symbols-outlined text-[18px] text-emerald-400">check_circle</span>
+                            <span>Especialista activo en turno y disponible para atención inmediata.</span>
+                        </div>
+                    </div>
+
+                    <!-- Mensaje Neutral cuando no hay técnico seleccionado -->
+                    <div x-show="!selectedTech" class="p-2.5 rounded-xl bg-surface-container-low border border-border-subtle/60 text-outline flex items-center gap-2 text-xs">
+                        <span class="material-symbols-outlined text-[18px]">info</span>
+                        <span>Seleccione un especialista para consultar su estado de turno y disponibilidad operacional.</span>
                     </div>
 
                     <!-- Comentario u Observación -->
@@ -708,9 +834,13 @@
                         </button>
                         <button
                             type="submit"
-                            class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm transition-all"
+                            class="px-4 py-2 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
+                            :class="isUnavailable 
+                                ? 'bg-amber-600 hover:bg-amber-700 text-white' 
+                                : 'bg-primary hover:bg-primary/90 text-on-primary'"
                         >
-                            Confirmar Asignación
+                            <span class="material-symbols-outlined text-[16px]" x-text="isUnavailable ? 'assignment_late' : 'how_to_reg'"></span>
+                            <span x-text="isUnavailable ? 'Proceder con Asignación (No Disponible)' : 'Confirmar Asignación'"></span>
                         </button>
                     </div>
                 </form>
