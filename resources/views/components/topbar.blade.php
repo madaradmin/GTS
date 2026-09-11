@@ -44,17 +44,8 @@
             </span>
         </form>
 
-        <!-- Campana de Alertas con Badge Contador (3) -->
-        <a 
-            href="{{ route('incidents.index') }}" 
-            class="relative p-2 rounded-lg text-[#8D98A8] hover:text-[#F2F5F8] hover:bg-[#11151B] transition-colors"
-            title="Centro de Alertas de Incidencias"
-        >
-            <span class="material-symbols-outlined text-[20px]">notifications</span>
-            <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#D83B52] text-white text-[9px] font-bold flex items-center justify-center font-mono ring-2 ring-[#070A0F] animate-pulse">
-                3
-            </span>
-        </a>
+        <!-- Componente Interactivo de Notificaciones con Dropdown Flotante -->
+        <x-notifications-dropdown />
 
         <!-- Menú Desplegable de Usuario (Avatar y Rol Operacional) -->
         <div x-data="{ userMenuOpen: false }" class="relative">

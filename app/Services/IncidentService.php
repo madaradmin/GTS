@@ -12,7 +12,8 @@ class IncidentService
     public function __construct(
         protected FolioGeneratorService $folioGenerator,
         protected AuditService $auditService,
-        protected FileStorageService $fileStorage
+        protected FileStorageService $fileStorage,
+        protected NotificationService $notificationService
     ) {}
 
     /**
@@ -20,7 +21,7 @@ class IncidentService
      */
     public function createIncident(array $data, User $reporter, array $attachments = []): Incident
     {
-        return DB::transaction(function () use ($data, $reporter, $attachments) {
+        $incident = DB::transaction(function () use ($data, $reporter, $attachments) {
             // 1. Generar folio único no colisionable
             $folio = $this->folioGenerator->generateNextFolio();
 
@@ -65,6 +66,10 @@ class IncidentService
 
             return $incident->load(['category', 'priority', 'status', 'reportedBy', 'attachments']);
         });
+
+        $this->notificationService->notifyIncidentCreated($incident);
+
+        return $incident;
     }
 
     /**
@@ -78,8 +83,9 @@ class IncidentService
      */
     public function assignIncident(Incident $incident, User $assigner, User $technician, ?string $comment = null): Incident
     {
-        return DB::transaction(function () use ($incident, $assigner, $technician, $comment) {
-            $isInitialAssignment = is_null($incident->assigned_to_user_id);
+        $isInitialAssignment = is_null($incident->assigned_to_user_id);
+
+        $incident = DB::transaction(function () use ($incident, $assigner, $technician, $comment, $isInitialAssignment) {
             $previousTechnician = $incident->assignedTo?->name ?? 'Sin asignar';
             $previousStatus = $incident->status->name;
 
@@ -131,6 +137,10 @@ class IncidentService
 
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
+
+        $this->notificationService?->notifyIncidentAssigned($incident, $assigner, $technician, !$isInitialAssignment);
+
+        return $incident;
     }
 
     /**
@@ -143,7 +153,7 @@ class IncidentService
      */
     public function startAttention(Incident $incident, User $user, ?string $comment = null): Incident
     {
-        return DB::transaction(function () use ($incident, $user, $comment) {
+        $incident = DB::transaction(function () use ($incident, $user, $comment) {
             $previousStatus = $incident->status->name;
 
             // 1. Si la incidencia no tenía técnico asignado, auto-asignar al técnico que inicia atención (RN-02 / RN-03)
@@ -181,6 +191,10 @@ class IncidentService
 
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
+
+        $this->notificationService?->notifyAttentionStarted($incident, $user);
+
+        return $incident;
     }
 
     /**
@@ -193,7 +207,7 @@ class IncidentService
      */
     public function addTechnicalNote(Incident $incident, User $user, string $note): \App\Models\IncidentHistory
     {
-        return $this->auditService->logAction(
+        $history = $this->auditService->logAction(
             incidentId: $incident->id,
             userId: $user->id,
             action: 'NOTA_TECNICA',
@@ -202,6 +216,10 @@ class IncidentService
             newValue: null,
             comment: trim($note)
         );
+
+        $this->notificationService?->notifyTechnicalNoteAdded($incident, $user, $note);
+
+        return $history;
     }
 
     /**
@@ -214,7 +232,7 @@ class IncidentService
      */
     public function resolveIncident(Incident $incident, User $technician, string $solutionDescription): Incident
     {
-        return DB::transaction(function () use ($incident, $technician, $solutionDescription) {
+        $incident = DB::transaction(function () use ($incident, $technician, $solutionDescription) {
             $previousStatus = $incident->status->name;
             $resolvedStatus = Status::where('code', 'RESUELTA')->firstOrFail();
 
@@ -248,6 +266,10 @@ class IncidentService
 
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
+
+        $this->notificationService?->notifyIncidentResolved($incident, $technician);
+
+        return $incident;
     }
 
     /**
@@ -260,7 +282,7 @@ class IncidentService
      */
     public function rejectResolution(Incident $incident, User $actor, string $reason): Incident
     {
-        return DB::transaction(function () use ($incident, $actor, $reason) {
+        $incident = DB::transaction(function () use ($incident, $actor, $reason) {
             $previousStatus = $incident->status->name;
             $inAttentionStatus = Status::where('code', 'EN_ATENCION')->firstOrFail();
 
@@ -294,6 +316,10 @@ class IncidentService
 
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
+
+        $this->notificationService?->notifyResolutionRejected($incident, $actor, $reason);
+
+        return $incident;
     }
 
     /**
@@ -306,7 +332,7 @@ class IncidentService
      */
     public function closeIncident(Incident $incident, User $closer, ?string $comment = null): Incident
     {
-        return DB::transaction(function () use ($incident, $closer, $comment) {
+        $incident = DB::transaction(function () use ($incident, $closer, $comment) {
             $previousStatus = $incident->status->name;
             $closedStatus = Status::where('code', 'CERRADA')->firstOrFail();
 
@@ -339,6 +365,10 @@ class IncidentService
 
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
+
+        $this->notificationService?->notifyIncidentClosed($incident, $closer);
+
+        return $incident;
     }
 }
 

@@ -33,6 +33,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/incidencias/{incident}/adjuntos', [IncidentAttachmentController::class, 'store'])->name('incidents.attachments.store');
     Route::get('/incidencias/{incident}/adjuntos/{attachment}/ver', [IncidentAttachmentController::class, 'show'])->name('incidents.attachments.show');
     Route::get('/incidencias/{incident}/adjuntos/{attachment}/descargar', [IncidentAttachmentController::class, 'download'])->name('incidents.attachments.download');
+
+    // Sistema de Notificaciones por Perfil (Paso 2)
+    Route::get('/notificaciones', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notificaciones/{id}/leer', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
+    Route::post('/notificaciones/leer-todas', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
 });
 
 Route::middleware('auth')->group(function () {
