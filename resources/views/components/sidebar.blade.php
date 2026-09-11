@@ -238,10 +238,17 @@
 
         <div class="flex items-center justify-between text-[10px] font-mono text-[#707B8A] pt-1 border-t border-[#1B2129]">
             <span>v1.0.0</span>
-            <span class="flex items-center gap-1 text-[#20C997]">
-                <span class="w-1.5 h-1.5 rounded-full bg-[#20C997] animate-pulse"></span>
-                <span>Conectado</span>
-            </span>
+            @if(auth()->user()->isShiftActive())
+                <span class="flex items-center gap-1 text-[#10B981]" title="Disponibilidad de Turno: ACTIVO">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse"></span>
+                    <span>🟢 ACTIVO</span>
+                </span>
+            @else
+                <span class="flex items-center gap-1 text-[#94A3B8]" title="Disponibilidad de Turno: NO DISPONIBLE">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[#94A3B8]"></span>
+                    <span>⚪ NO DISP.</span>
+                </span>
+            @endif
         </div>
     </div>
 </aside>

@@ -20,6 +20,8 @@ class User extends Authenticatable
         'password',
         'role_id',
         'badge_number',
+        'shift_status',
+        'shift_status_updated_at',
         'is_active',
     ];
 
@@ -32,6 +34,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'shift_status_updated_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
@@ -99,6 +102,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Historial de cambios de disponibilidad operacional en turnos.
+     */
+    public function availabilityLogs(): HasMany
+    {
+        return $this->hasMany(AgentAvailabilityLog::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
      * Comprueba si el usuario tiene rol GTS.
      */
     public function isGts(): bool
@@ -112,6 +123,67 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->hasRole('admin');
+    }
+
+    /**
+     * Comprueba si el agente está en estado ACTIVO / DISPONIBLE para recibir asignaciones.
+     */
+    public function isShiftActive(): bool
+    {
+        return strtoupper($this->shift_status ?? 'ACTIVO') === 'ACTIVO';
+    }
+
+    /**
+     * Comprueba si el agente está en estado NO DISPONIBLE (receso, descanso o fuera de turno).
+     */
+    public function isShiftUnavailable(): bool
+    {
+        return strtoupper($this->shift_status ?? '') === 'NO DISPONIBLE';
+    }
+
+    /**
+     * Actualiza el estado de disponibilidad del agente y genera el registro en la bitácora histórica.
+     */
+    public function setShiftStatus(string $newStatus, ?string $reason = null, ?string $ipAddress = null): void
+    {
+        $oldStatus = $this->shift_status ?? 'ACTIVO';
+
+        $this->shift_status = $newStatus;
+        $this->shift_status_updated_at = now();
+        $this->save();
+
+        AgentAvailabilityLog::create([
+            'user_id' => $this->id,
+            'status' => $newStatus,
+            'previous_status' => $oldStatus,
+            'reason' => $reason,
+            'ip_address' => $ipAddress,
+            'created_at' => now(),
+        ]);
+    }
+
+    /**
+     * Scope para filtrar usuarios con estado de turno ACTIVO.
+     */
+    public function scopeShiftActive($query)
+    {
+        return $query->where('shift_status', 'ACTIVO');
+    }
+
+    /**
+     * Scope para filtrar usuarios con estado NO DISPONIBLE.
+     */
+    public function scopeShiftUnavailable($query)
+    {
+        return $query->where('shift_status', 'NO DISPONIBLE');
+    }
+
+    /**
+     * Scope para obtener especialistas técnicos GTS.
+     */
+    public function scopeGtsAgents($query)
+    {
+        return $query->whereHas('role', fn($q) => $q->where('slug', 'gts'));
     }
 }
 

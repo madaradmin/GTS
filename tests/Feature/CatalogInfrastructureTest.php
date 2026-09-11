@@ -281,3 +281,4 @@ class CatalogInfrastructureTest extends TestCase
         $response->assertSee('Catálogos');
     }
 }
+

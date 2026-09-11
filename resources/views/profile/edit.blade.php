@@ -19,6 +19,13 @@
         </div>
 
         <div class="grid grid-cols-1 gap-6">
+            <!-- Estado de Turno y Disponibilidad Operacional (GTS / Operadores) -->
+            <div class="p-6 bg-brand-surface border border-brand-border rounded-xl shadow-enterprise">
+                <div class="max-w-xl">
+                    @include('profile.partials.update-shift-status-form')
+                </div>
+            </div>
+
             <!-- Información del Perfil -->
             <div class="p-6 bg-brand-surface border border-brand-border rounded-xl shadow-enterprise">
                 <div class="max-w-xl">

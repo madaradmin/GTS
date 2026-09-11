@@ -57,6 +57,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Estado de Turno de Agentes GTS (Paso 8)
+    Route::post('/profile/shift-status', [\App\Http\Controllers\AgentShiftController::class, 'update'])->name('profile.shift-status');
 });
 
 require __DIR__.'/auth.php';
