@@ -611,7 +611,7 @@
 
                             <!-- Botón 4: Generar reporte -->
                             <a 
-                                href="{{ route('audit.index') }}"
+                                href="{{ route('reports.index') }}"
                                 class="w-full p-2 rounded-xl bg-[#0F141B] border border-[#252C35] hover:border-[#2A3440] hover:bg-[#151A21] text-[#E2E7ED] flex items-center gap-3 transition-all group"
                             >
                                 <div class="w-7 h-7 rounded-lg bg-[#151A21] border border-[#252C35] flex items-center justify-center text-[#8A95A4] shrink-0 group-hover:text-white group-hover:bg-[#1A222C] transition-colors">

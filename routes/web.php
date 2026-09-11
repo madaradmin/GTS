@@ -38,6 +38,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/notificaciones', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notificaciones/{id}/leer', [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.mark-as-read');
     Route::post('/notificaciones/leer-todas', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
+
+    // Módulo Profesional de Reportes Operativos (Paso 5)
+    Route::get('/reportes', [\App\Http\Controllers\ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reportes/pdf', [\App\Http\Controllers\ReportController::class, 'exportPdf'])->name('reports.pdf');
+    Route::post('/reportes/email', [\App\Http\Controllers\ReportController::class, 'sendEmail'])->name('reports.email');
+    Route::post('/reportes/whatsapp', [\App\Http\Controllers\ReportController::class, 'shareWhatsApp'])->name('reports.whatsapp');
 });
 
 Route::middleware('auth')->group(function () {

@@ -111,11 +111,11 @@
         </div>
 
         <!-- 3. Item: Reportes -->
-        <div x-data="{ openRep: false }" class="space-y-1">
+        <div x-data="{ openRep: {{ request()->routeIs('reports.*') ? 'true' : 'false' }} }" class="space-y-1">
             <button 
                 @click="openRep = !openRep" 
                 type="button"
-                class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923] hover:border hover:border-[#263241] transition-all"
+                class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all {{ request()->routeIs('reports.*') ? 'text-[#F2F5F8] bg-[#11151B] border border-[#263241]' : 'text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923] hover:border hover:border-[#263241]' }}"
             >
                 <div class="flex items-center gap-3">
                     <span class="material-symbols-outlined text-[19px]">bar_chart</span>
@@ -128,9 +128,28 @@
                     expand_more
                 </span>
             </button>
-            <div x-show="openRep" class="pl-7 pr-2 py-1 space-y-1 text-xs text-[#707B8A]">
-                <a href="{{ route('dashboard', ['period' => 'today']) }}" class="block px-3 py-1.5 rounded hover:text-[#F2F5F8]">Reporte Diario</a>
-                <a href="{{ route('dashboard', ['period' => 'week']) }}" class="block px-3 py-1.5 rounded hover:text-[#F2F5F8]">Reporte Semanal</a>
+            <div x-show="openRep" class="pl-4 pr-1 py-1 space-y-1">
+                <a 
+                    href="{{ route('reports.index') }}" 
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors {{ request()->routeIs('reports.index') && !request()->has('period_preset') ? 'text-[#F2F5F8] bg-[#101923] border border-[#263241] font-semibold' : 'text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923]' }}"
+                >
+                    <span class="material-symbols-outlined text-[16px] text-[#3D82C6]">summarize</span>
+                    <span>Generador de reportes</span>
+                </a>
+                <a 
+                    href="{{ route('reports.index', ['period_preset' => 'today']) }}" 
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors {{ request()->get('period_preset') === 'today' ? 'text-[#F2F5F8] bg-[#101923] border border-[#263241] font-semibold' : 'text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923]' }}"
+                >
+                    <span class="material-symbols-outlined text-[16px] text-[#707B8A]">today</span>
+                    <span>Reporte Diario</span>
+                </a>
+                <a 
+                    href="{{ route('reports.index', ['period_preset' => 'week']) }}" 
+                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors {{ request()->get('period_preset') === 'week' ? 'text-[#F2F5F8] bg-[#101923] border border-[#263241] font-semibold' : 'text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923]' }}"
+                >
+                    <span class="material-symbols-outlined text-[16px] text-[#707B8A]">date_range</span>
+                    <span>Reporte Semanal</span>
+                </a>
             </div>
         </div>
 
