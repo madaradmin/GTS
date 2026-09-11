@@ -1,20 +1,20 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
     :root {
-        --canvas-base: #080d16;
-        --sidebar-base: #0b1220;
-        --topbar-base: #0d1526;
-        --surface-card: #0f192d;
-        --surface-subtle: #131f35;
-        --surface-hover: #16243d;
-        --border-card: #1b2a47;
-        --border-subtle: #142036;
-        --color-primary: #2563eb;
-        --color-primary-hover: #1d4ed8;
-        --text-primary: #f1f5f9;
+        --canvas-base: #070d1e;
+        --sidebar-base: #091126;
+        --topbar-base: #080f24;
+        --surface-card: #0c1633;
+        --surface-subtle: #101c40;
+        --surface-hover: #14234d;
+        --border-card: #19274e;
+        --border-subtle: #131f3f;
+        --color-primary: #1b64f2;
+        --color-primary-hover: #1551c6;
+        --text-primary: #f8fafc;
         --text-secondary: #94a3b8;
         --text-muted: #64748b;
     }
@@ -35,15 +35,15 @@
 }
 
 @layer components {
-    /* Contenedor de Tarjeta Enterprise */
+    /* Contenedor de Tarjeta Enterprise SITIA / AIFA */
     .card-enterprise {
-        background-color: #0f192d;
-        border: 1px solid #1b2a47;
+        background-color: #0c1633;
+        border: 1px solid #19274e;
         border-radius: 0.875rem;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
     .card-enterprise:hover {
-        border-color: #24385e;
+        border-color: #223566;
     }
 
     /* Tipografía de Folios e Identificadores Aeroportuarios */
@@ -61,7 +61,7 @@
         justify-content: center;
         gap: 0.5rem;
         padding: 0.5rem 1rem;
-        background-color: #2563eb;
+        background-color: #1b64f2;
         color: #ffffff;
         font-weight: 600;
         font-size: 0.8125rem;
@@ -71,11 +71,29 @@
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
     }
     .btn-enterprise-primary:hover {
-        background-color: #1d4ed8;
-        box-shadow: 0 0 12px -2px rgba(37, 99, 235, 0.45);
+        background-color: #1551c6;
+        box-shadow: 0 0 12px -2px rgba(27, 100, 242, 0.45);
     }
     .btn-enterprise-primary:active {
         transform: scale(0.98);
+    }
+
+    /* Botón de Acciones Rápidas (Panel Derecho) */
+    .btn-quick-action {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        border-radius: 0.75rem;
+        background-color: rgba(16, 28, 64, 0.7);
+        border: 1px solid #19274e;
+        transition: all 0.15s ease-in-out;
+        text-align: left;
+    }
+    .btn-quick-action:hover {
+        background-color: rgba(20, 35, 77, 0.9);
+        border-color: rgba(27, 100, 242, 0.5);
     }
 
     .btn-enterprise-secondary {
@@ -84,160 +102,57 @@
         justify-content: center;
         gap: 0.5rem;
         padding: 0.5rem 1rem;
-        background-color: #131f35;
-        color: #cbd5e1;
+        background-color: #101c40;
+        color: #94a3b8;
         font-weight: 500;
         font-size: 0.8125rem;
         border-radius: 0.625rem;
-        border: 1px solid #1b2a47;
-        transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        border: 1px solid #19274e;
+        transition: all 0.15s ease;
     }
     .btn-enterprise-secondary:hover {
-        background-color: #16243d;
-        border-color: #24385e;
-        color: #f1f5f9;
+        background-color: #14234d;
+        color: #f8fafc;
+        border-color: #223566;
     }
 
-    /* Badges de Prioridad Aeroportuaria (Funcionales) */
-    .badge-priority-critica {
+    /* Micro-puntos de Estado Operacional con Pulso */
+    .pulse-dot {
+        position: relative;
         display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        background-color: #2b1116;
-        color: #f87171;
-        border: 1px solid #4c1d25;
+        width: 0.5rem;
+        height: 0.5rem;
     }
-    .badge-priority-alta {
+    .pulse-dot-ping {
+        position: absolute;
         display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        background-color: #2b170c;
-        color: #fb923c;
-        border: 1px solid #4d2715;
+        width: 100%;
+        height: 100%;
+        border-radius: 9999px;
+        opacity: 0.75;
+        animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
     }
-    .badge-priority-media {
+    .pulse-dot-core {
+        position: relative;
         display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        background-color: #29210b;
-        color: #facc15;
-        border: 1px solid #483a13;
-    }
-    .badge-priority-baja {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.375rem;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        background-color: #0d241c;
-        color: #34d399;
-        border: 1px solid #164333;
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: 9999px;
     }
 
-    /* Badges de Estado Operacional (FSM) */
-    .badge-status-nueva {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 500;
-        background-color: #10203d;
-        color: #60a5fa;
-        border: 1px solid #1d3b6e;
+    /* Barra de Desplazamiento Delgada Enterprise */
+    .scrollbar-thin::-webkit-scrollbar {
+        width: 5px;
+        height: 5px;
     }
-    .badge-status-asignada {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 500;
-        background-color: #1a1b3d;
-        color: #a5b4fc;
-        border: 1px solid #2d306b;
+    .scrollbar-thin::-webkit-scrollbar-track {
+        background: transparent;
     }
-    .badge-status-en-atencion {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 500;
-        background-color: #2b1d0c;
-        color: #fbbf24;
-        border: 1px solid #4d3314;
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+        background: #19274e;
+        border-radius: 9999px;
     }
-    .badge-status-resuelta {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 500;
-        background-color: #0c251c;
-        color: #34d399;
-        border: 1px solid #154432;
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background: #223566;
     }
-    .badge-status-cerrada {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.1875rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.6875rem;
-        font-weight: 500;
-        background-color: #172033;
-        color: #94a3b8;
-        border: 1px solid #26354f;
-    }
-}
-
-/* Scrollbars Sutiles y Estilizadas para C4 / Centros de Mando */
-.scrollbar-thin::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
-}
-.scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb {
-    background: #1b2a47;
-    border-radius: 9999px;
-}
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: #2563eb;
-}
-
-.scrollbar-none::-webkit-scrollbar {
-    display: none;
-}
-.scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
-
-[x-cloak] {
-    display: none !important;
 }

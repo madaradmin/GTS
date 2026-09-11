@@ -1,4 +1,4 @@
-import defaultTheme from 'tailwindcss/defaultTheme';
+﻿import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
 
 /** @type {import('tailwindcss').Config} */
@@ -13,74 +13,79 @@ export default {
     theme: {
         extend: {
             colors: {
-                // Dark Enterprise / Mission Control Tokens
-                'brand-canvas': '#080d16',
-                'brand-sidebar': '#0b1220',
-                'brand-topbar': '#0d1526',
-                'brand-surface': '#0f192d',
-                'brand-surface-subtle': '#131f35',
-                'brand-surface-hover': '#16243d',
-                'brand-surface-active': '#1c2d4d',
+                // Dark Enterprise / Mission Control Tokens (Calibrados con mockup SITIA/AIFA)
+                'brand-canvas': '#070d1e',
+                'brand-sidebar': '#091126',
+                'brand-topbar': '#080f24',
+                'brand-surface': '#0c1633',
+                'brand-surface-subtle': '#101c40',
+                'brand-surface-hover': '#14234d',
+                'brand-surface-active': '#182b5e',
                 
                 // Borders
-                'brand-border': '#1b2a47',
-                'brand-border-subtle': '#142036',
-                'brand-border-focus': '#2563eb',
+                'brand-border': '#19274e',
+                'brand-border-subtle': '#131f3f',
+                'brand-border-focus': '#1b64f2',
 
-                // Tech Blue Primary
-                'brand-primary': '#2563eb',
-                'brand-primary-hover': '#1d4ed8',
-                'brand-primary-active': '#1e40af',
-                'brand-primary-muted': '#172554',
+                // Tech Blue Primary (Píldoras y Botones de Acción Rápida)
+                'brand-primary': '#1b64f2',
+                'brand-primary-hover': '#1551c6',
+                'brand-primary-active': '#1040a0',
+                'brand-primary-muted': '#172b5c',
 
                 // Text Hierarchy
-                'brand-text-primary': '#f1f5f9',
+                'brand-text-primary': '#f8fafc',
                 'brand-text-secondary': '#94a3b8',
                 'brand-text-muted': '#64748b',
                 'brand-text-faint': '#475569',
 
                 // Functional State Colors (Strictly Functional)
                 'state-critical': '#ef4444',
-                'state-critical-bg': '#2b1116',
-                'state-critical-border': '#4c1d25',
+                'state-critical-bg': '#3b1219',
+                'state-critical-border': '#5c1d28',
+                'state-critical-text': '#fca5a5',
 
-                'state-high': '#f97316',
-                'state-high-bg': '#2b170c',
-                'state-high-border': '#4d2715',
+                'state-high': '#f59e0b',
+                'state-high-bg': '#3d2806',
+                'state-high-border': '#663d08',
+                'state-high-text': '#fcd34d',
 
                 'state-medium': '#eab308',
-                'state-medium-bg': '#29210b',
-                'state-medium-border': '#483a13',
+                'state-medium-bg': '#3b3208',
+                'state-medium-border': '#5c4e0d',
+                'state-medium-text': '#fde047',
 
                 'state-low': '#10b981',
-                'state-low-bg': '#0d241c',
-                'state-low-border': '#164333',
+                'state-low-bg': '#064e3b',
+                'state-low-border': '#059669',
+                'state-low-text': '#6ee7b7',
 
                 'state-info': '#3b82f6',
-                'state-info-bg': '#0e1f3d',
-                'state-info-border': '#1a376b',
+                'state-info-bg': '#172554',
+                'state-info-border': '#1e40af',
+                'state-info-text': '#93c5fd',
 
                 'state-neutral': '#64748b',
                 'state-neutral-bg': '#172033',
                 'state-neutral-border': '#26354f',
 
-                // Backward-compatibility aliases with elevated palette
-                'surface-base': '#080d16',
-                'surface-dim': '#0b1220',
-                'surface-subtle': '#0f192d',
-                'surface-card': '#0f192d',
-                'surface-overlay': '#131f35',
-                'surface-container': '#131f35',
-                'surface-container-low': '#0d1526',
-                'surface-container-high': '#16243d',
-                'primary': '#2563eb',
-                'primary-container': '#1d4ed8',
+                // Backward-compatibility aliases
+                'surface-base': '#070d1e',
+                'surface-dim': '#091126',
+                'surface-subtle': '#0c1633',
+                'surface-card': '#0c1633',
+                'surface-overlay': '#101c40',
+                'surface-container': '#101c40',
+                'surface-container-low': '#080f24',
+                'surface-container-high': '#14234d',
+                'primary': '#1b64f2',
+                'primary-container': '#1551c6',
                 'on-primary': '#ffffff',
                 'on-primary-container': '#eff6ff',
-                'border-subtle': '#1b2a47',
-                'border-active': '#24385e',
-                'border-focus': '#2563eb',
-                'on-surface': '#f1f5f9',
+                'border-subtle': '#19274e',
+                'border-active': '#223566',
+                'border-focus': '#1b64f2',
+                'on-surface': '#f8fafc',
                 'on-surface-variant': '#94a3b8',
                 'outline': '#64748b',
                 'status-resolved': '#10b981',
@@ -94,11 +99,15 @@ export default {
                 'code-folio': ['JetBrains Mono', 'monospace'],
             },
             boxShadow: {
-                'enterprise': '0 4px 20px -2px rgba(0, 0, 0, 0.45)',
-                'enterprise-sm': '0 2px 8px 0 rgba(0, 0, 0, 0.35)',
-                'enterprise-lg': '0 10px 30px -4px rgba(0, 0, 0, 0.55)',
-                'glow-primary': '0 0 15px -3px rgba(37, 99, 235, 0.35)',
+                'enterprise': '0 4px 20px -2px rgba(0, 0, 0, 0.55)',
+                'enterprise-sm': '0 2px 8px 0 rgba(0, 0, 0, 0.45)',
+                'enterprise-lg': '0 10px 30px -4px rgba(0, 0, 0, 0.65)',
+                'glow-primary': '0 0 15px -3px rgba(27, 100, 242, 0.45)',
             },
+            borderRadius: {
+                'xl': '0.75rem',
+                '2xl': '1rem',
+            }
         },
     },
 
