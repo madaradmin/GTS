@@ -44,6 +44,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/reportes/pdf', [\App\Http\Controllers\ReportController::class, 'exportPdf'])->name('reports.pdf');
     Route::post('/reportes/email', [\App\Http\Controllers\ReportController::class, 'sendEmail'])->name('reports.email');
     Route::post('/reportes/whatsapp', [\App\Http\Controllers\ReportController::class, 'shareWhatsApp'])->name('reports.whatsapp');
+
+    // Módulo de Catálogos e Infraestructura Tecnológica (Paso 7)
+    Route::get('/catalogos', [\App\Http\Controllers\CatalogController::class, 'index'])->name('catalogs.index');
+    Route::post('/catalogos', [\App\Http\Controllers\CatalogController::class, 'store'])->name('catalogs.store');
+    Route::put('/catalogos/{category}', [\App\Http\Controllers\CatalogController::class, 'update'])->name('catalogs.update');
+    Route::post('/catalogos/{category}/status', [\App\Http\Controllers\CatalogController::class, 'updateStatus'])->name('catalogs.status');
+    Route::delete('/catalogos/{category}', [\App\Http\Controllers\CatalogController::class, 'destroy'])->name('catalogs.destroy');
 });
 
 Route::middleware('auth')->group(function () {

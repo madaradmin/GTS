@@ -22,8 +22,15 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Regla aeronáutica: La eliminación de incidencias está estrictamente prohibida para todos
-        Gate::before(function (User $user, string $ability) {
+        Gate::before(function (User $user, string $ability, array $args = []) {
             if ($ability === 'delete') {
+                if (isset($args[0]) && $args[0] instanceof \App\Models\Category) {
+                    if ($args[0]->incidents()->count() > 0) {
+                        return false;
+                    }
+                    return $user->isAdmin();
+                }
+
                 return false;
             }
 

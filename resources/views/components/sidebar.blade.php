@@ -174,30 +174,36 @@
             <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#1E293B] text-[#93C5FD]">LOG</span>
         </a>
 
-        <!-- 6. Item: Catálogos -->
-        <div x-data="{ openCat: false }" class="space-y-1">
-            <button 
-                @click="openCat = !openCat" 
-                type="button"
-                class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923] hover:border hover:border-[#263241] transition-all"
-            >
-                <div class="flex items-center gap-3">
+        <!-- 6. Item: Catálogos / Infraestructura -->
+        <div x-data="{ openCat: {{ request()->routeIs('catalogs.*') ? 'true' : 'false' }} }" class="space-y-1">
+            <div class="flex items-center justify-between rounded-xl transition-all {{ request()->routeIs('catalogs.*') ? 'text-[#F2F5F8] bg-[#11151B] border border-[#263241]' : 'text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923] hover:border hover:border-[#263241]' }}">
+                <a 
+                    href="{{ route('catalogs.index') }}" 
+                    class="flex-1 flex items-center gap-3 px-3.5 py-2.5 text-xs font-medium"
+                >
                     <span class="material-symbols-outlined text-[19px]">layers</span>
                     <span>Catálogos</span>
-                </div>
-                <span 
-                    class="material-symbols-outlined text-[16px] text-[#707B8A] transition-transform duration-200"
-                    :class="openCat ? 'rotate-180 text-[#F2F5F8]' : ''"
+                </a>
+                <button 
+                    @click="openCat = !openCat" 
+                    type="button"
+                    class="px-2.5 py-2.5 text-[#707B8A] hover:text-[#F2F5F8] transition-colors"
+                    title="Desplegar subsistemas"
                 >
-                    expand_more
-                </span>
-            </button>
-            <div x-show="openCat" class="pl-7 pr-2 py-1 space-y-1 text-xs text-[#707B8A]">
-                <span class="block px-3 py-1 text-[#8D98A8]">• CCTV</span>
-                <span class="block px-3 py-1 text-[#8D98A8]">• Control de Acceso</span>
-                <span class="block px-3 py-1 text-[#8D98A8]">• Pantallas FIDS</span>
-                <span class="block px-3 py-1 text-[#8D98A8]">• Radiocomunicación</span>
-                <span class="block px-3 py-1 text-[#8D98A8]">• Periféricos</span>
+                    <span 
+                        class="material-symbols-outlined text-[16px] transition-transform duration-200"
+                        :class="openCat ? 'rotate-180 text-[#F2F5F8]' : ''"
+                    >
+                        expand_more
+                    </span>
+                </button>
+            </div>
+            <div x-show="openCat" x-cloak class="pl-7 pr-2 py-1 space-y-1 text-xs text-[#707B8A]">
+                <a href="{{ route('catalogs.index', ['category' => 'cctv']) }}" class="block px-3 py-1 hover:text-[#F2F5F8] transition-colors {{ request('category') === 'cctv' ? 'text-[#3D82C6] font-semibold' : 'text-[#8D98A8]' }}">• CCTV</a>
+                <a href="{{ route('catalogs.index', ['category' => 'access-control']) }}" class="block px-3 py-1 hover:text-[#F2F5F8] transition-colors {{ request('category') === 'access-control' ? 'text-[#3D82C6] font-semibold' : 'text-[#8D98A8]' }}">• Control de Acceso</a>
+                <a href="{{ route('catalogs.index', ['category' => 'fids']) }}" class="block px-3 py-1 hover:text-[#F2F5F8] transition-colors {{ request('category') === 'fids' ? 'text-[#3D82C6] font-semibold' : 'text-[#8D98A8]' }}">• Pantallas FIDS</a>
+                <a href="{{ route('catalogs.index', ['category' => 'tetra']) }}" class="block px-3 py-1 hover:text-[#F2F5F8] transition-colors {{ request('category') === 'tetra' ? 'text-[#3D82C6] font-semibold' : 'text-[#8D98A8]' }}">• Radiocomunicación</a>
+                <a href="{{ route('catalogs.index', ['category' => 'networks']) }}" class="block px-3 py-1 hover:text-[#F2F5F8] transition-colors {{ request('category') === 'networks' ? 'text-[#3D82C6] font-semibold' : 'text-[#8D98A8]' }}">• Periféricos</a>
             </div>
         </div>
 
