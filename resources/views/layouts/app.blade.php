@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="dark" lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'GIT - SITIA AIFA') }}</title>
+        <title>{{ config('app.name', 'GTS - Grupo de Seguridad Tecnológica AIFA') }}</title>
 
         <!-- Google Fonts: Inter & JetBrains Mono -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,7 +20,7 @@
     <body class="bg-brand-canvas text-brand-text-primary antialiased font-sans overflow-hidden selection:bg-brand-primary selection:text-white">
         <div x-data="{ sidebarOpen: false }" class="flex h-screen w-screen flex-col overflow-hidden bg-brand-canvas">
             
-            <!-- 1. Barra Superior Completa (SITIA/GIT + Logotipo Oficial AIFA + Buscador + Usuario) -->
+            <!-- 1. Barra Superior Completa (GTS + Logotipo Oficial AIFA + Buscador + Usuario) -->
             <x-topbar />
 
             <!-- 2. Contenedor de Trabajo: Sidebar Vertical Izquierdo + Área de Mando Principal -->

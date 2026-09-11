@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="dark" lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'GIT - AIFA') }}</title>
+        <title>{{ config('app.name', 'GTS - Grupo de Seguridad Tecnológica AIFA') }}</title>
 
         <!-- Google Fonts: Inter & JetBrains Mono -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,17 +18,17 @@
     </head>
     <body class="font-sans text-brand-text-primary antialiased bg-brand-canvas min-h-screen flex flex-col justify-center items-center p-4 selection:bg-brand-primary selection:text-white">
         <div class="w-full sm:max-w-md flex flex-col items-center gap-6">
-            <!-- Emblema Institucional GIT -->
+            <!-- Emblema Institucional GTS -->
             <a href="/" class="flex flex-col items-center gap-3 group focus:outline-none">
                 <div class="w-14 h-14 rounded-2xl bg-brand-surface border border-brand-border flex items-center justify-center shadow-enterprise group-hover:border-brand-primary transition-all">
                     <x-application-logo class="w-8 h-8 text-brand-primary" />
                 </div>
                 <div class="flex flex-col items-center text-center">
                     <span class="text-xl font-bold text-brand-text-primary tracking-wider leading-tight">
-                        GIT AIFA
+                        GTS AIFA
                     </span>
                     <span class="text-xs text-brand-text-muted mt-0.5">
-                        Gestión de Incidencias Tecnológicas
+                        Grupo de Seguridad Tecnológica
                     </span>
                 </div>
             </a>

@@ -1,4 +1,4 @@
-﻿@props([
+@props([
     'showBrandText' => false,
     'class' => 'w-7 h-7'
 ])
@@ -10,7 +10,7 @@
         fill="none" 
         xmlns="http://www.w3.org/2000/svg"
         class="{{ $class }} shrink-0"
-        aria-label="Emblema SITIA / GIT"
+        aria-label="Emblema GTS - Grupo de Seguridad Tecnológica"
     >
         <!-- Resplandor / Filtros -->
         <defs>
@@ -69,10 +69,10 @@
     @if($showBrandText)
         <div class="flex flex-col text-left leading-tight">
             <span class="font-extrabold text-base tracking-wider text-white font-sans">
-                SITIA <span class="text-blue-400 text-xs font-mono font-normal">/ GIT</span>
+                GTS
             </span>
             <span class="text-[9px] uppercase tracking-wider text-slate-400 font-medium">
-                Security Technology Incident Administration
+                Grupo de Seguridad Tecnológica
             </span>
         </div>
     @endif

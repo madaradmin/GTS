@@ -610,13 +610,13 @@
                         </div>
                     </div>
 
-                    <!-- Banner Inferior SITIA -->
+                    <!-- Banner Inferior GTS -->
                     <div class="mt-2.5 p-2.5 rounded-xl bg-[#0b142d]/80 border border-brand-border flex items-center gap-2.5">
                         <x-application-logo class="w-6 h-6 shrink-0 text-blue-400" />
                         <div class="flex flex-col text-left leading-tight min-w-0">
-                            <span class="font-bold text-[11px] text-white">SITIA</span>
+                            <span class="font-bold text-[11px] text-white">GTS</span>
                             <span class="text-[9px] text-brand-text-muted truncate">
-                                Una herramienta para una operación más segura y eficiente.
+                                Grupo de Seguridad Tecnológica • Operación Crítica AIFA
                             </span>
                         </div>
                     </div>

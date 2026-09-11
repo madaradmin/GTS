@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="dark" lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'GIT - Gestión de Incidencias Tecnológicas AIFA') }}</title>
+        <title>{{ config('app.name', 'GTS - Grupo de Seguridad Tecnológica AIFA') }}</title>
 
         <!-- Google Fonts: Inter & JetBrains Mono -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,10 +26,10 @@
                 </div>
                 <div class="flex flex-col">
                     <span class="font-bold text-sm text-brand-text-primary tracking-wider leading-none">
-                        GIT AIFA
+                        GTS AIFA
                     </span>
                     <span class="text-[10px] text-brand-text-muted font-medium mt-0.5">
-                        Centro de Control Operativo NOC / APOC
+                        Grupo de Seguridad Tecnológica • NOC / APOC
                     </span>
                 </div>
             </div>
@@ -68,7 +68,7 @@
                 <!-- Título y Subtítulo -->
                 <div class="flex flex-col gap-3 max-w-2xl">
                     <h1 class="text-3xl sm:text-5xl font-bold text-brand-text-primary tracking-tight">
-                        Gestión de Incidencias Tecnológicas
+                        Grupo de Seguridad Tecnológica
                     </h1>
                     <p class="text-sm sm:text-base text-brand-text-secondary leading-relaxed">
                         Plataforma institucional para el despacho, trazabilidad forense y atención inmediata de contingencias en infraestructura tecnológica del Aeropuerto Internacional Felipe Ángeles.
@@ -123,7 +123,7 @@
         <!-- Footer Institucional -->
         <footer class="py-4 px-6 lg:px-12 border-t border-brand-border bg-brand-topbar/40 text-center text-xs text-brand-text-muted font-mono flex flex-col sm:flex-row items-center justify-between gap-2">
             <span>© {{ date('Y') }} AIFA — Aeropuerto Internacional Felipe Ángeles. Todos los derechos reservados.</span>
-            <span class="text-[10px]">GIT v2.4 Enterprise Dark • Seguridad Operacional AFAC / OACI</span>
+            <span class="text-[10px]">GTS v2.4 Enterprise Dark • Seguridad Operacional AFAC / OACI</span>
         </footer>
 
     </body>

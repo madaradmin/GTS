@@ -1,7 +1,7 @@
-﻿<header 
+<header 
     class="h-16 px-4 sm:px-6 bg-brand-topbar border-b border-brand-border flex items-center justify-between gap-4 shrink-0 select-none z-30 w-full"
 >
-    <!-- 1. Lado Izquierdo: Emblema SITIA / GIT con Escudo Tecnológico -->
+    <!-- 1. Lado Izquierdo: Emblema GTS con Escudo Tecnológico -->
     <div class="flex items-center gap-3 shrink-0">
         <!-- Toggle en Dispositivos Móviles -->
         <button 
@@ -13,7 +13,7 @@
             <span class="material-symbols-outlined text-[22px]">menu</span>
         </button>
 
-        <!-- Logotipo Institucional SITIA / GIT -->
+        <!-- Logotipo Institucional GTS -->
         <a href="{{ route('dashboard') }}" class="flex items-center gap-3 group focus:outline-none">
             <x-application-logo :showBrandText="true" class="w-8 h-8" />
         </a>
