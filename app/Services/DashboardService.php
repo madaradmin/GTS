@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\Incident;
+use App\Models\IncidentHistory;
+use App\Models\Priority;
+use App\Models\Status;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -207,5 +210,53 @@ class DashboardService
             'week' => [now()->subDays(7)->startOfDay(), now()->endOfDay()],
             default => [now()->startOfDay(), now()->endOfDay()], // 'today'
         };
+    }
+
+    /**
+     * Obtiene el desglose real de incidencias activas clasificadas por prioridad.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPrioritiesBreakdown(): array
+    {
+        $priorities = Priority::orderBy('level', 'desc')->get();
+        $activeStatusIds = Status::whereIn('code', ['NUEVA', 'ASIGNADA', 'EN_ATENCION'])->pluck('id');
+        $totalActive = Incident::whereIn('status_id', $activeStatusIds)->count();
+
+        $items = [];
+        foreach ($priorities as $p) {
+            $count = Incident::where('priority_id', $p->id)
+                ->whereIn('status_id', $activeStatusIds)
+                ->count();
+
+            $percentage = $totalActive > 0 ? (int) round(($count / $totalActive) * 100) : 0;
+
+            $items[] = [
+                'name' => $p->name,
+                'slug' => $p->slug,
+                'level' => $p->level,
+                'count' => $count,
+                'percentage' => $percentage,
+            ];
+        }
+
+        return [
+            'total' => $totalActive,
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * Obtiene los últimos eventos periciales de auditoría para la timeline de actividad en vivo.
+     *
+     * @param int $limit
+     * @return Collection
+     */
+    public function getRecentActivities(int $limit = 4): Collection
+    {
+        return IncidentHistory::with(['incident', 'user'])
+            ->latest('id')
+            ->take($limit)
+            ->get();
     }
 }

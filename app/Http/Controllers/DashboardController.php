@@ -29,6 +29,8 @@ class DashboardController extends Controller
         $distribution = $this->dashboardService->getCategoryDistribution();
         $activeTechnicians = $this->dashboardService->getActiveTechniciansCount();
         $currentShift = $this->dashboardService->getCurrentShift();
+        $prioritiesSummary = $this->dashboardService->getPrioritiesBreakdown();
+        $recentActivities = $this->dashboardService->getRecentActivities(4);
 
         return view('dashboard', [
             'metrics' => $metrics,
@@ -37,6 +39,8 @@ class DashboardController extends Controller
             'distribution' => $distribution,
             'activeTechnicians' => $activeTechnicians,
             'currentShift' => $currentShift,
+            'prioritiesSummary' => $prioritiesSummary,
+            'recentActivities' => $recentActivities,
         ]);
     }
 }
