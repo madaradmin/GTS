@@ -68,3 +68,4 @@ class IncidentReportMail extends Mailable
         ];
     }
 }
+

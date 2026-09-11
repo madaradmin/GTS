@@ -162,7 +162,19 @@
             <span>Indicadores</span>
         </a>
 
-        <!-- 5. Item: Catálogos -->
+        <!-- 5. Item: Auditoría -->
+        <a 
+            href="{{ route('audit.index') }}"
+            class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all {{ request()->routeIs('audit.*') ? 'text-[#F2F5F8] bg-[#11151B] border border-[#263241]' : 'text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923] hover:border hover:border-[#263241]' }}"
+        >
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-[19px]">manage_history</span>
+                <span>Auditoría</span>
+            </div>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#1E293B] text-[#93C5FD]">LOG</span>
+        </a>
+
+        <!-- 6. Item: Catálogos -->
         <div x-data="{ openCat: false }" class="space-y-1">
             <button 
                 @click="openCat = !openCat" 
@@ -189,7 +201,7 @@
             </div>
         </div>
 
-        <!-- 6. Item: Configuración -->
+        <!-- 7. Item: Configuración -->
         <a 
             href="{{ route('profile.edit') }}"
             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all {{ request()->routeIs('profile.edit') ? 'bg-gradient-to-r from-[#0E2D56] to-[#123A70] text-[#F2F5F8] border border-[#164A8A]/40 font-semibold shadow-sm' : 'text-[#A8B0BC] hover:text-[#F2F5F8] hover:bg-[#101923] hover:border hover:border-[#263241]' }}"

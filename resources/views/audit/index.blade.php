@@ -5,9 +5,11 @@
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex flex-col">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="text-xs uppercase tracking-widest text-primary font-semibold">Trazabilidad Aeronáutica</span>
-                    <span class="text-outline text-sm">/</span>
-                    <span class="text-xs uppercase tracking-widest text-on-surface-variant font-medium">Control Pericial APOC & GTS</span>
+                    <a href="{{ route('dashboard') }}" class="text-xs uppercase tracking-widest text-[#707B8A] hover:text-[#3D82C6] transition-colors">Inicio</a>
+                    <span class="text-[#707B8A] text-sm">/</span>
+                    <span class="text-xs uppercase tracking-widest text-[#3D82C6] font-semibold">Trazabilidad Aeronáutica</span>
+                    <span class="text-[#707B8A] text-sm">/</span>
+                    <span class="text-xs uppercase tracking-widest text-[#8D98A8] font-medium">Bitácora Pericial</span>
                 </div>
                 <div class="flex items-center gap-3">
                     <h1 class="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">Bitácora General de Auditoría</h1>

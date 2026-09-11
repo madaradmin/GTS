@@ -183,3 +183,4 @@ class ReportController extends Controller
         return back()->with('status_message', $result['message']);
     }
 }
+

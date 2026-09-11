@@ -253,5 +253,49 @@ class AuditTest extends TestCase
         $this->assertGreaterThanOrEqual(1, $stats['state_changes']);
         $this->assertGreaterThanOrEqual(1, $stats['resolutions']);
     }
+
+    public function test_sidebar_displays_auditoria_option_and_active_state(): void
+    {
+        $adminUser = User::where('email', 'admin@aifa.aero')->firstOrFail();
+
+        // Al visitar /auditoria, el sidebar debe mostrar la opción activa
+        $response = $this->actingAs($adminUser)->get(route('audit.index'));
+
+        $response->assertOk();
+        $response->assertSee(route('audit.index'));
+        $response->assertSee('Auditoría');
+        $response->assertSee('manage_history');
+    }
+
+    public function test_sidebar_displays_auditoria_option_for_apoc_and_gts_profiles(): void
+    {
+        $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
+        $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
+
+        // APOC ve Auditoría en el sidebar
+        $responseApoc = $this->actingAs($apocUser)->get(route('dashboard'));
+        $responseApoc->assertOk();
+        $responseApoc->assertSee(route('audit.index'));
+        $responseApoc->assertSee('Auditoría');
+
+        // GTS ve Auditoría en el sidebar
+        $responseGts = $this->actingAs($gtsUser)->get(route('dashboard'));
+        $responseGts->assertOk();
+        $responseGts->assertSee(route('audit.index'));
+        $responseGts->assertSee('Auditoría');
+    }
+
+    public function test_audit_index_displays_navigable_breadcrumbs(): void
+    {
+        $adminUser = User::where('email', 'admin@aifa.aero')->firstOrFail();
+
+        $response = $this->actingAs($adminUser)->get(route('audit.index'));
+
+        $response->assertOk();
+        $response->assertSee(route('dashboard'));
+        $response->assertSee('Inicio');
+        $response->assertSee('Trazabilidad Aeronáutica');
+        $response->assertSee('Bitácora Pericial');
+    }
 }
 

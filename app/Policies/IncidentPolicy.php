@@ -137,6 +137,15 @@ class IncidentPolicy
     }
 
     /**
+     * Determina si el usuario puede consultar la bitácora pericial de auditoría.
+     * Acceso completo al Administrador y visibilidad pericial a perfiles activos APOC y GTS.
+     */
+    public function viewAudit(User $user): bool
+    {
+        return $user->is_active;
+    }
+
+    /**
      * Eliminación de incidencias prohibida por normativa aeronáutica.
      */
     public function delete(User $user, Incident $incident): bool

@@ -254,3 +254,4 @@ class ReportSystemTest extends TestCase
         $response->assertSee('Reporte Semanal');
     }
 }
+

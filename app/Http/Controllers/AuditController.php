@@ -20,6 +20,7 @@ class AuditController extends Controller
     public function index(Request $request): View
     {
         abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+        \Illuminate\Support\Facades\Gate::authorize('viewAudit', \App\Models\Incident::class);
 
         $filters = $request->only([
             'search',
