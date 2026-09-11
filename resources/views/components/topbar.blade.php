@@ -24,26 +24,8 @@
         <x-aifa-logo class="h-6 lg:h-7 text-white" subtext="AEROPUERTO INTERNACIONAL FELIPE ÁNGELES" />
     </div>
 
-    <!-- 3. Lado Derecho: Buscador Global con Caret, Notificaciones y Perfil -->
+    <!-- 3. Lado Derecho: Notificaciones y Perfil -->
     <div class="flex items-center gap-3 sm:gap-4 shrink-0">
-        
-        <!-- Buscador Global con Caret de Filtros -->
-        <form action="{{ route('incidents.index') }}" method="GET" class="relative hidden sm:block w-64 lg:w-80">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#778394]">
-                <span class="material-symbols-outlined text-[17px]">search</span>
-            </span>
-            <input 
-                type="search" 
-                name="search" 
-                value="{{ request('search') }}"
-                placeholder="Buscar por folio, descripción, equipo o usuario..."
-                class="w-full pl-8 pr-8 py-1.5 bg-[#0D1117] border border-[#252C35] hover:border-[#2A3440] focus:border-[#164A8A] focus:ring-1 focus:ring-[#164A8A] rounded-lg text-xs text-[#D6DCE4] placeholder-[#6F7A89] transition-all outline-none"
-            >
-            <span class="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none text-[#778394]">
-                <span class="material-symbols-outlined text-[16px]">expand_more</span>
-            </span>
-        </form>
-
         <!-- Componente Interactivo de Notificaciones con Dropdown Flotante -->
         <x-notifications-dropdown />
 

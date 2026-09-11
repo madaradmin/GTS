@@ -131,7 +131,11 @@ class Incident extends Model
         return $query->where(function ($q) use ($term, $like) {
             $q->where('folio', $like, "%{$term}%")
               ->orWhere('title', $like, "%{$term}%")
-              ->orWhere('location', $like, "%{$term}%");
+              ->orWhere('location', $like, "%{$term}%")
+              ->orWhere('description', $like, "%{$term}%")
+              ->orWhereHas('category', fn ($c) => $c->where('name', $like, "%{$term}%"))
+              ->orWhereHas('reportedBy', fn ($u) => $u->where('name', $like, "%{$term}%")->orWhere('badge_number', $like, "%{$term}%"))
+              ->orWhereHas('assignedTo', fn ($u) => $u->where('name', $like, "%{$term}%"));
         });
     }
 

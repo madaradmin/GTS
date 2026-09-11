@@ -5,6 +5,44 @@
     :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
     class="fixed inset-y-0 left-0 z-40 top-16 lg:static lg:top-0 w-64 bg-[#070A0F] border-r border-[#1B2129] flex flex-col justify-between transition-transform duration-200 ease-in-out shrink-0 select-none {{ $class }}"
 >
+    <!-- 1. Buscador Global del Sistema GTS -->
+    <div class="p-3 border-b border-[#1B2129] shrink-0" x-data="{ searchFocused: false }">
+        <form action="{{ route('incidents.index') }}" method="GET" class="relative">
+            <span 
+                class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none transition-colors"
+                :class="searchFocused ? 'text-[#3D82C6]' : 'text-[#707B8A]'"
+            >
+                <span class="material-symbols-outlined text-[16px]">search</span>
+            </span>
+            <input 
+                x-ref="sidebarSearch"
+                @focus="searchFocused = true"
+                @blur="searchFocused = false"
+                @keydown.window.prevent.slash="if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { $refs.sidebarSearch.focus(); }"
+                @keydown.window.cmd.k.prevent="$refs.sidebarSearch.focus()"
+                @keydown.window.ctrl.k.prevent="$refs.sidebarSearch.focus()"
+                type="search" 
+                name="search" 
+                value="{{ request('search') }}"
+                placeholder="Buscar incidencias..."
+                class="w-full pl-8 pr-7 py-2 bg-[#0D1117] border border-[#252C35] hover:border-[#344050] focus:border-[#164A8A] focus:ring-1 focus:ring-[#164A8A] rounded-xl text-xs text-[#D6DCE4] placeholder-[#6F7A89] transition-all outline-none"
+            >
+            @if(request('search'))
+                <a 
+                    href="{{ route('incidents.index') }}" 
+                    class="absolute inset-y-0 right-0 pr-2 flex items-center text-[#707B8A] hover:text-[#E66A7A] transition-colors"
+                    title="Limpiar búsqueda"
+                >
+                    <span class="material-symbols-outlined text-[14px]">close</span>
+                </a>
+            @else
+                <span class="absolute inset-y-0 right-0 pr-2 flex items-center pointer-events-none text-[#566170] text-[10px] font-mono select-none" title="Presiona / para buscar">
+                    /
+                </span>
+            @endif
+        </form>
+    </div>
+
     <!-- Menú de Navegación Vertical -->
     <div class="flex flex-col flex-1 min-h-0 overflow-y-auto scrollbar-thin p-3.5 space-y-1.5">
         
