@@ -179,43 +179,58 @@
                                 </div>
                             </div>
 
-                            <!-- Leyenda de Categorías con Conteo y Porcentaje -->
+                            <!-- Leyenda de Categorías con Conteo y Porcentaje (Catálogo Centralizado) -->
                             <div class="flex flex-col gap-1 text-[10px] min-w-0 flex-1">
-                                <div class="flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#1E5FA7] shrink-0"></span>
-                                        Cámaras
-                                    </span>
-                                    <span class="font-mono text-[#9AA5B4] shrink-0">9 <span class="text-[#707B8A] text-[9px]">37%</span></span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#16A878] shrink-0"></span>
-                                        Puertas
-                                    </span>
-                                    <span class="font-mono text-[#9AA5B4] shrink-0">6 <span class="text-[#707B8A] text-[9px]">25%</span></span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#D99216] shrink-0"></span>
-                                        Pantallas
-                                    </span>
-                                    <span class="font-mono text-[#9AA5B4] shrink-0">4 <span class="text-[#707B8A] text-[9px]">17%</span></span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#7256B8] shrink-0"></span>
-                                        Radios
-                                    </span>
-                                    <span class="font-mono text-[#9AA5B4] shrink-0">3 <span class="text-[#707B8A] text-[9px]">12%</span></span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#687383] shrink-0"></span>
-                                        Otros
-                                    </span>
-                                    <span class="font-mono text-[#9AA5B4] shrink-0">2 <span class="text-[#707B8A] text-[9px]">8%</span></span>
-                                </div>
+                                @if(!empty($distribution['categories']))
+                                    @foreach($distribution['categories'] as $catItem)
+                                        <div class="flex items-center justify-between">
+                                            <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate" title="{{ $catItem['name'] }}">
+                                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: {{ $catItem['color'] }}"></span>
+                                                <span class="truncate">{{ $catItem['name'] }}</span>
+                                            </span>
+                                            <span class="font-mono text-[#9AA5B4] shrink-0 ml-1">
+                                                {{ $catItem['count'] }} 
+                                                <span class="text-[#707B8A] text-[9px]">{{ $catItem['percentage'] }}%</span>
+                                            </span>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <div class="flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-[#06B6D4] shrink-0"></span>
+                                            CCTV
+                                        </span>
+                                        <span class="font-mono text-[#9AA5B4] shrink-0">9 <span class="text-[#707B8A] text-[9px]">37%</span></span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] shrink-0"></span>
+                                            Control de Acceso
+                                        </span>
+                                        <span class="font-mono text-[#9AA5B4] shrink-0">6 <span class="text-[#707B8A] text-[9px]">25%</span></span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] shrink-0"></span>
+                                            FIDS
+                                        </span>
+                                        <span class="font-mono text-[#9AA5B4] shrink-0">4 <span class="text-[#707B8A] text-[9px]">17%</span></span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-[#3B82F6] shrink-0"></span>
+                                            TETRA
+                                        </span>
+                                        <span class="font-mono text-[#9AA5B4] shrink-0">3 <span class="text-[#707B8A] text-[9px]">12%</span></span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-[#10B981] shrink-0"></span>
+                                            Periféricos
+                                        </span>
+                                        <span class="font-mono text-[#9AA5B4] shrink-0">2 <span class="text-[#707B8A] text-[9px]">8%</span></span>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>

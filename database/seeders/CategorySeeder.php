@@ -14,7 +14,7 @@ class CategorySeeder extends Seeder
     {
         $categories = [
             [
-                'name' => 'CCTV y Videovigilancia',
+                'name' => 'CCTV',
                 'slug' => 'cctv',
                 'description' => 'Cámaras domo PTZ, fijas perimetrales, servidores VMS Genetec y grabadores NVR.',
                 'icon' => 'videocam',
@@ -46,9 +46,9 @@ class CategorySeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'name' => 'Redes e Infraestructura IT',
+                'name' => 'Periféricos',
                 'slug' => 'networks',
-                'description' => 'Switches de borde perimetral, racks IDF/MDF, cableado estructurado y enlaces de fibra óptica.',
+                'description' => 'Terminales de usuario, switches de borde, periféricos biométricos y hardware de soporte.',
                 'icon' => 'hub',
                 'color' => '#10B981',
                 'is_active' => true,
@@ -56,7 +56,7 @@ class CategorySeeder extends Seeder
         ];
 
         foreach ($categories as $cat) {
-            Category::firstOrCreate(['slug' => $cat['slug']], $cat);
+            Category::updateOrCreate(['slug' => $cat['slug']], $cat);
         }
     }
 }

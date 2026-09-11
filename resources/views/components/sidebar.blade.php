@@ -162,10 +162,11 @@
                 </span>
             </button>
             <div x-show="openCat" class="pl-7 pr-2 py-1 space-y-1 text-xs text-[#707B8A]">
-                <span class="block px-3 py-1 text-[#8D98A8]">• CCTV / Cámaras</span>
+                <span class="block px-3 py-1 text-[#8D98A8]">• CCTV</span>
                 <span class="block px-3 py-1 text-[#8D98A8]">• Control de Acceso</span>
                 <span class="block px-3 py-1 text-[#8D98A8]">• Pantallas FIDS</span>
                 <span class="block px-3 py-1 text-[#8D98A8]">• Radiocomunicación</span>
+                <span class="block px-3 py-1 text-[#8D98A8]">• Periféricos</span>
             </div>
         </div>
 

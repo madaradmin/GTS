@@ -41,15 +41,7 @@
                     </span>
 
                     <!-- Badge de Prioridad -->
-                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-semibold text-xs uppercase tracking-wider
-                        @if($incident->priority->slug === 'critica' || $incident->priority->slug === 'alta') bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]
-                        @elseif($incident->priority->slug === 'media') bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]
-                        @else bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)] @endif">
-                        @if($incident->priority->slug === 'critica')
-                            <span class="w-2 h-2 rounded-full bg-[#D83B52] animate-pulse"></span>
-                        @endif
-                        {{ $incident->priority->name }}
-                    </span>
+                    <x-badge-priority :priority="$incident->priority" />
 
                     <span class="text-xs text-outline font-mono hidden sm:inline">
                         | {{ $incident->category->name }}
