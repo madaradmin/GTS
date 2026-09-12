@@ -627,7 +627,7 @@
 
                     <!-- Banner Inferior GTS -->
                     <div class="mt-2.5 p-2.5 rounded-xl bg-[#0F141B] border border-[#252C35] flex items-center gap-2.5">
-                        <x-application-logo class="w-6 h-6 shrink-0 text-[#3D82C6]" />
+                        <x-application-logo class="w-7 h-7 shrink-0" />
                         <div class="flex flex-col text-left leading-tight min-w-0">
                             <span class="font-bold text-[11px] text-[#F2F5F8]">GTS</span>
                             <span class="text-[9px] text-[#8A95A4] truncate">

@@ -15,7 +15,7 @@
 
         <!-- Logotipo Institucional GTS -->
         <a href="{{ route('dashboard') }}" class="flex items-center gap-3 group focus:outline-none">
-            <x-application-logo :showBrandText="true" class="w-8 h-8" />
+            <x-application-logo :showBrandText="true" class="w-10 h-10" />
         </a>
     </div>
 

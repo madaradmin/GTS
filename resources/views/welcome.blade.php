@@ -21,9 +21,7 @@
         <!-- Header Superior -->
         <header class="h-16 px-6 lg:px-12 border-b border-brand-border bg-brand-topbar/80 backdrop-blur flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl bg-brand-primary-muted/40 border border-[#164A8A]/40 flex items-center justify-center shadow-enterprise-sm">
-                    <x-application-logo class="w-5 h-5 text-[#3D82C6]" />
-                </div>
+                <x-application-logo class="w-10 h-10" />
                 <div class="flex flex-col">
                     <span class="font-bold text-sm text-brand-text-primary tracking-wider leading-none">
                         GTS AIFA

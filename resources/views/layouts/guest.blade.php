@@ -19,11 +19,9 @@
     <body class="font-sans text-brand-text-primary antialiased bg-brand-canvas min-h-screen flex flex-col justify-center items-center p-4 selection:bg-brand-primary selection:text-white">
         <div class="w-full sm:max-w-md flex flex-col items-center gap-6">
             <!-- Emblema Institucional GTS -->
-            <a href="/" class="flex flex-col items-center gap-3 group focus:outline-none">
-                <div class="w-14 h-14 rounded-2xl bg-brand-surface border border-brand-border flex items-center justify-center shadow-enterprise group-hover:border-brand-primary transition-all">
-                    <x-application-logo class="w-8 h-8 text-brand-primary" />
-                </div>
-                <div class="flex flex-col items-center text-center">
+            <a href="/" class="flex flex-col items-center gap-2 group focus:outline-none">
+                <x-application-logo class="w-20 h-20" />
+                <div class="flex flex-col items-center text-center mt-1">
                     <span class="text-xl font-bold text-brand-text-primary tracking-wider leading-tight">
                         GTS AIFA
                     </span>
