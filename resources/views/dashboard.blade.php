@@ -338,52 +338,57 @@
 
                 </div>
 
-                <!-- Fila C: Tabla "Últimas incidencias" (9 Columnas de Alta Densidad) -->
+                <!-- Fila C: Tabla "Últimas incidencias" (Optimizado a 5 Columnas Esenciales - Cero Scroll Horizontal) -->
                 <div class="bg-brand-surface border border-brand-border rounded-xl shadow-enterprise flex flex-col flex-1 min-h-0 overflow-hidden hover:border-[#2A3440] transition-all">
                     
                     <!-- Encabezado de la Tabla -->
                     <div class="px-4 py-2 border-b border-[#202731] flex items-center justify-between shrink-0 bg-[#0D1117]">
-                        <h2 class="text-xs font-bold text-[#F2F5F8]">
-                            Últimas incidencias
-                        </h2>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xs font-bold text-[#F2F5F8]">
+                                Últimas incidencias
+                            </h2>
+                            <span class="px-2 py-0.5 rounded-full bg-[#151B23] text-[10px] font-mono text-[#7E8998] border border-[#202731]">
+                                En tiempo real
+                            </span>
+                        </div>
                         <a 
                             href="{{ route('incidents.index') }}" 
-                            class="text-[11px] font-medium text-[#3D82C6] hover:text-[#6FA2D2] flex items-center gap-1 transition-colors"
+                            class="text-[11px] font-medium text-[#3D82C6] hover:text-[#6FA2D2] flex items-center gap-1 transition-colors group"
                         >
                             <span>Ver todas las incidencias</span>
-                            <span class="text-[13px]">→</span>
+                            <span class="text-[13px] group-hover:translate-x-0.5 transition-transform">→</span>
                         </a>
                     </div>
 
                     <!-- Tabla de Incidencias -->
-                    <div class="flex-1 overflow-y-auto scrollbar-thin">
+                    <div class="flex-1 overflow-x-hidden overflow-y-auto scrollbar-thin">
                         <table class="w-full text-left text-xs border-collapse">
                             <thead>
-                                <tr class="bg-[#0D1117] text-[10px] font-semibold text-[#7E8998] border-b border-[#202731] sticky top-0 z-10">
-                                    <th class="py-2 px-3 font-mono">Folio</th>
-                                    <th class="py-2 px-3">Fecha / Hora</th>
-                                    <th class="py-2 px-3">Tipo</th>
-                                    <th class="py-2 px-3">Sistema</th>
-                                    <th class="py-2 px-3">Descripción</th>
-                                    <th class="py-2 px-3">Prioridad</th>
-                                    <th class="py-2 px-3">Estado</th>
-                                    <th class="py-2 px-3">Asignado a</th>
-                                    <th class="py-2 px-3 text-center">Acciones</th>
+                                <tr class="bg-[#0D1117] text-[10px] font-semibold text-[#7E8998] border-b border-[#202731] sticky top-0 z-10 select-none">
+                                    <th class="py-2.5 px-4 font-mono">Folio</th>
+                                    <th class="py-2.5 px-4">Fecha / Hora</th>
+                                    <th class="py-2.5 px-4">Tipo / Categoría</th>
+                                    <th class="py-2.5 px-4">Estado</th>
+                                    <th class="py-2.5 px-4">Prioridad</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-[#202731] text-[11px] text-[#DDE3EA]">
                                 @if($recentIncidents->isNotEmpty())
                                     @foreach($recentIncidents->take(5) as $inc)
-                                        <tr class="hover:bg-[#151B23] transition-colors">
-                                            <td class="py-2 px-3 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
-                                                <a href="{{ route('incidents.show', $inc->folio) }}" class="hover:underline">
+                                        <tr 
+                                            onclick="window.location='{{ route('incidents.show', $inc->folio) }}'"
+                                            class="hover:bg-[#151B23] cursor-pointer transition-colors group"
+                                            title="Ver expediente {{ $inc->folio }}"
+                                        >
+                                            <td class="py-2.5 px-4 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
+                                                <a href="{{ route('incidents.show', $inc->folio) }}" class="group-hover:underline">
                                                     {{ $inc->folio }}
                                                 </a>
                                             </td>
-                                            <td class="py-2 px-3 text-[#7E8998] font-mono whitespace-nowrap">
+                                            <td class="py-2.5 px-4 text-[#7E8998] font-mono whitespace-nowrap">
                                                 {{ $inc->created_at->format('d/m/Y H:i') }}
                                             </td>
-                                            <td class="py-2 px-3 whitespace-nowrap">
+                                            <td class="py-2.5 px-4 whitespace-nowrap">
                                                 <span class="flex items-center gap-1.5">
                                                     <span class="material-symbols-outlined text-[15px] text-[#707B8A]">
                                                         {{ $inc->category?->slug === 'cctv' ? 'videocam' : ($inc->category?->slug === 'control-acceso' ? 'door_front' : ($inc->category?->slug === 'fids' ? 'tv' : 'radio')) }}
@@ -391,98 +396,105 @@
                                                     <span>{{ $inc->category?->name ?? 'CCTV' }}</span>
                                                 </span>
                                             </td>
-                                            <td class="py-2 px-3 text-[#DDE3EA] font-medium whitespace-nowrap">
-                                                {{ $inc->location ?? 'Terminal 1' }}
-                                            </td>
-                                            <td class="py-2 px-3 max-w-[180px] truncate text-[#DDE3EA]" title="{{ $inc->title }}">
-                                                {{ $inc->title }}
-                                            </td>
-                                            <td class="py-2 px-3 whitespace-nowrap">
-                                                <x-badge-priority :priority="$inc->priority" />
-                                            </td>
-                                            <td class="py-2 px-3 whitespace-nowrap">
+                                            <td class="py-2.5 px-4 whitespace-nowrap">
                                                 <x-badge-status :status="$inc->status" />
                                             </td>
-                                            <td class="py-2 px-3 text-[#7E8998] font-mono whitespace-nowrap">
-                                                {{ $inc->assignedTo?->name ? 'GTS-'.sprintf('%02d', $inc->assignedTo->id) : 'Sin asignar' }}
-                                            </td>
-                                            <td class="py-2 px-3 text-center whitespace-nowrap">
-                                                <a 
-                                                    href="{{ route('incidents.show', $inc->folio) }}" 
-                                                    class="p-1 rounded text-[#707B8A] hover:text-[#F2F5F8] hover:bg-[#151A21] inline-flex items-center justify-center transition-colors"
-                                                    title="Ver expediente"
-                                                >
-                                                    <span class="material-symbols-outlined text-[16px]">more_horiz</span>
-                                                </a>
+                                            <td class="py-2.5 px-4 whitespace-nowrap">
+                                                <x-badge-priority :priority="$inc->priority" />
                                             </td>
                                         </tr>
                                     @endforeach
                                 @else
                                     <!-- Filas Pre-cargadas de Alta Fidelidad si la base de datos no tiene incidentes -->
-                                    <tr class="hover:bg-[#151B23] transition-colors">
-                                        <td class="py-2 px-3 font-mono font-bold text-[#3D82C6]">ST-2026-0043</td>
-                                        <td class="py-2 px-3 text-[#7E8998] font-mono">10/09/2026 16:48</td>
-                                        <td class="py-2 px-3">
+                                    <tr 
+                                        onclick="window.location='{{ route('incidents.index') }}'"
+                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
+                                    >
+                                        <td class="py-2.5 px-4 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
+                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0043</a>
+                                        </td>
+                                        <td class="py-2.5 px-4 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 16:48</td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
                                             <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">videocam</span> Cámaras</span>
                                         </td>
-                                        <td class="py-2 px-3 text-[#DDE3EA]">CCTV - Terminal</td>
-                                        <td class="py-2 px-3 max-w-[180px] truncate text-[#DDE3EA]">Cámara T3 sin señal</td>
-                                        <td class="py-2 px-3"><span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]">Alta</span></td>
-                                        <td class="py-2 px-3"><span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">En proceso</span></td>
-                                        <td class="py-2 px-3 font-mono text-[#7E8998]">GTS-02</td>
-                                        <td class="py-2 px-3 text-center"><span class="material-symbols-outlined text-[16px] text-[#707B8A]">more_horiz</span></td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">En proceso</span>
+                                        </td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]">Alta</span>
+                                        </td>
                                     </tr>
-                                    <tr class="hover:bg-[#151B23] transition-colors">
-                                        <td class="py-2 px-3 font-mono font-bold text-[#3D82C6]">ST-2026-0042</td>
-                                        <td class="py-2 px-3 text-[#7E8998] font-mono">10/09/2026 15:32</td>
-                                        <td class="py-2 px-3">
+                                    <tr 
+                                        onclick="window.location='{{ route('incidents.index') }}'"
+                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
+                                    >
+                                        <td class="py-2.5 px-4 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
+                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0042</a>
+                                        </td>
+                                        <td class="py-2.5 px-4 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 15:32</td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
                                             <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">door_front</span> Puertas</span>
                                         </td>
-                                        <td class="py-2 px-3 text-[#DDE3EA]">Puerta E-12</td>
-                                        <td class="py-2 px-3 max-w-[180px] truncate text-[#DDE3EA]">Puerta no responde</td>
-                                        <td class="py-2 px-3"><span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]">Alta</span></td>
-                                        <td class="py-2 px-3"><span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">En proceso</span></td>
-                                        <td class="py-2 px-3 font-mono text-[#7E8998]">GTS-01</td>
-                                        <td class="py-2 px-3 text-center"><span class="material-symbols-outlined text-[16px] text-[#707B8A]">more_horiz</span></td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">En proceso</span>
+                                        </td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]">Alta</span>
+                                        </td>
                                     </tr>
-                                    <tr class="hover:bg-[#151B23] transition-colors">
-                                        <td class="py-2 px-3 font-mono font-bold text-[#3D82C6]">ST-2026-0041</td>
-                                        <td class="py-2 px-3 text-[#7E8998] font-mono">10/09/2026 14:17</td>
-                                        <td class="py-2 px-3">
+                                    <tr 
+                                        onclick="window.location='{{ route('incidents.index') }}'"
+                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
+                                    >
+                                        <td class="py-2.5 px-4 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
+                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0041</a>
+                                        </td>
+                                        <td class="py-2.5 px-4 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 14:17</td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
                                             <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">tv</span> Pantallas</span>
                                         </td>
-                                        <td class="py-2 px-3 text-[#DDE3EA]">Pantalla Salidas</td>
-                                        <td class="py-2 px-3 max-w-[180px] truncate text-[#DDE3EA]">Sin imagen en pantalla</td>
-                                        <td class="py-2 px-3"><span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">Media</span></td>
-                                        <td class="py-2 px-3"><span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span></td>
-                                        <td class="py-2 px-3 font-mono text-[#7E8998]">GTS-03</td>
-                                        <td class="py-2 px-3 text-center"><span class="material-symbols-outlined text-[16px] text-[#707B8A]">more_horiz</span></td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span>
+                                        </td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">Media</span>
+                                        </td>
                                     </tr>
-                                    <tr class="hover:bg-[#151B23] transition-colors">
-                                        <td class="py-2 px-3 font-mono font-bold text-[#3D82C6]">ST-2026-0040</td>
-                                        <td class="py-2 px-3 text-[#7E8998] font-mono">10/09/2026 12:06</td>
-                                        <td class="py-2 px-3">
+                                    <tr 
+                                        onclick="window.location='{{ route('incidents.index') }}'"
+                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
+                                    >
+                                        <td class="py-2.5 px-4 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
+                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0040</a>
+                                        </td>
+                                        <td class="py-2.5 px-4 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 12:06</td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
                                             <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">radio</span> Radios</span>
                                         </td>
-                                        <td class="py-2 px-3 text-[#DDE3EA]">Radio TWR</td>
-                                        <td class="py-2 px-3 max-w-[180px] truncate text-[#DDE3EA]">Sin audio en canal 3</td>
-                                        <td class="py-2 px-3"><span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">Media</span></td>
-                                        <td class="py-2 px-3"><span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span></td>
-                                        <td class="py-2 px-3 font-mono text-[#7E8998]">GTS-02</td>
-                                        <td class="py-2 px-3 text-center"><span class="material-symbols-outlined text-[16px] text-[#707B8A]">more_horiz</span></td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span>
+                                        </td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">Media</span>
+                                        </td>
                                     </tr>
-                                    <tr class="hover:bg-[#151B23] transition-colors">
-                                        <td class="py-2 px-3 font-mono font-bold text-[#3D82C6]">ST-2026-0039</td>
-                                        <td class="py-2 px-3 text-[#7E8998] font-mono">10/09/2026 11:23</td>
-                                        <td class="py-2 px-3">
+                                    <tr 
+                                        onclick="window.location='{{ route('incidents.index') }}'"
+                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
+                                    >
+                                        <td class="py-2.5 px-4 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
+                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0039</a>
+                                        </td>
+                                        <td class="py-2.5 px-4 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 11:23</td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
                                             <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">videocam</span> Cámaras</span>
                                         </td>
-                                        <td class="py-2 px-3 text-[#DDE3EA]">CCTV - Estacionamiento</td>
-                                        <td class="py-2 px-3 max-w-[180px] truncate text-[#DDE3EA]">Imagen borrosa</td>
-                                        <td class="py-2 px-3"><span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)]">Baja</span></td>
-                                        <td class="py-2 px-3"><span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span></td>
-                                        <td class="py-2 px-3 font-mono text-[#7E8998]">GTS-01</td>
-                                        <td class="py-2 px-3 text-center"><span class="material-symbols-outlined text-[16px] text-[#707B8A]">more_horiz</span></td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-3 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span>
+                                        </td>
+                                        <td class="py-2.5 px-4 whitespace-nowrap">
+                                            <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)]">Baja</span>
+                                        </td>
                                     </tr>
                                 @endif
                             </tbody>
