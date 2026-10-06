@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Incident;
 use App\Models\User;
 use App\Notifications\IncidentNotification;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class NotificationService
@@ -39,8 +39,8 @@ class NotificationService
 
             // 2. Notificación a los Agentes GTS activos
             $gtsAgents = User::where('is_active', true)
-                ->whereHas('role', fn($q) => $q->where('slug', 'gts'))
-                ->when($incident->reported_by_user_id, fn($q, $id) => $q->where('id', '!=', $id))
+                ->whereHas('role', fn ($q) => $q->where('slug', 'gts'))
+                ->when($incident->reported_by_user_id, fn ($q, $id) => $q->where('id', '!=', $id))
                 ->get();
 
             $gtsNotification = new IncidentNotification(
@@ -60,8 +60,8 @@ class NotificationService
 
             // 3. Notificación a los Administradores
             $admins = User::where('is_active', true)
-                ->whereHas('role', fn($q) => $q->where('slug', 'admin'))
-                ->when($incident->reported_by_user_id, fn($q, $id) => $q->where('id', '!=', $id))
+                ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
+                ->when($incident->reported_by_user_id, fn ($q, $id) => $q->where('id', '!=', $id))
                 ->get();
 
             $adminNotification = new IncidentNotification(
@@ -79,7 +79,7 @@ class NotificationService
                 $admin->notify(clone $adminNotification);
             }
         } catch (\Throwable $e) {
-            Log::error("Error despachando notificaciones de creación para {$incident->folio}: " . $e->getMessage());
+            Log::error("Error despachando notificaciones de creación para {$incident->folio}: ".$e->getMessage());
         }
     }
 
@@ -126,7 +126,7 @@ class NotificationService
             // 3. Notificación a Administradores si es reasignación o crítica
             if ($isReassignment || $incident->priority?->slug === 'critica') {
                 $admins = User::where('is_active', true)
-                    ->whereHas('role', fn($q) => $q->where('slug', 'admin'))
+                    ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
                     ->whereNotIn('id', [$assigner->id, $technician->id, $incident->reported_by_user_id])
                     ->get();
 
@@ -146,7 +146,57 @@ class NotificationService
                 }
             }
         } catch (\Throwable $e) {
-            Log::error("Error despachando notificaciones de asignación para {$incident->folio}: " . $e->getMessage());
+            Log::error("Error despachando notificaciones de asignación para {$incident->folio}: ".$e->getMessage());
+        }
+    }
+
+    /**
+     * Notifica la asignación o reasignación a un especialista o área externa (ej. TICS).
+     */
+    public function notifyIncidentAssignedToSpecialist(Incident $incident, User $assigner, string $specialist = 'TICS', bool $isReassignment = false): void
+    {
+        try {
+            $incident->loadMissing(['reportedBy', 'priority']);
+            $actionUrl = route('incidents.show', $incident->folio);
+
+            // 1. Notificación al APOC reportante
+            if ($incident->reportedBy && $incident->reportedBy->is_active && $incident->reported_by_user_id !== $assigner->id) {
+                $incident->reportedBy->notify(new IncidentNotification(
+                    type: 'incident_assigned_reporter',
+                    title: 'Especialista Asignado',
+                    message: "La incidencia {$incident->folio} fue asignada al especialista {$specialist} para su atención.",
+                    incidentId: $incident->id,
+                    folio: $incident->folio,
+                    actionUrl: $actionUrl,
+                    icon: 'engineering',
+                    level: 'info'
+                ));
+            }
+
+            // 2. Notificación a Administradores si es reasignación o crítica
+            if ($isReassignment || $incident->priority?->slug === 'critica') {
+                $admins = User::where('is_active', true)
+                    ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
+                    ->whereNotIn('id', [$assigner->id, $incident->reported_by_user_id])
+                    ->get();
+
+                $adminNotification = new IncidentNotification(
+                    type: 'incident_assignment_admin',
+                    title: "Asignación Técnica: {$incident->folio}",
+                    message: "Incidencia {$incident->folio} asignada al especialista {$specialist} por {$assigner->name}.",
+                    incidentId: $incident->id,
+                    folio: $incident->folio,
+                    actionUrl: $actionUrl,
+                    icon: 'swap_horiz',
+                    level: 'info'
+                );
+
+                foreach ($admins as $admin) {
+                    $admin->notify(clone $adminNotification);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error("Error despachando notificaciones de asignación a {$specialist} para {$incident->folio}: ".$e->getMessage());
         }
     }
 
@@ -173,7 +223,7 @@ class NotificationService
                 ));
             }
         } catch (\Throwable $e) {
-            Log::error("Error despachando notificaciones de inicio de atención para {$incident->folio}: " . $e->getMessage());
+            Log::error("Error despachando notificaciones de inicio de atención para {$incident->folio}: ".$e->getMessage());
         }
     }
 
@@ -186,7 +236,7 @@ class NotificationService
         try {
             $incident->loadMissing(['reportedBy', 'assignedTo']);
             $actionUrl = route('incidents.show', $incident->folio);
-            $excerpt = mb_substr($note, 0, 80) . (mb_strlen($note) > 80 ? '...' : '');
+            $excerpt = mb_substr($note, 0, 80).(mb_strlen($note) > 80 ? '...' : '');
 
             // Notificar a APOC reportante
             if ($incident->reportedBy && $incident->reportedBy->is_active && $incident->reported_by_user_id !== $author->id) {
@@ -216,7 +266,7 @@ class NotificationService
                 ));
             }
         } catch (\Throwable $e) {
-            Log::error("Error despachando notificaciones de nota técnica para {$incident->folio}: " . $e->getMessage());
+            Log::error("Error despachando notificaciones de nota técnica para {$incident->folio}: ".$e->getMessage());
         }
     }
 
@@ -247,7 +297,7 @@ class NotificationService
 
             // 2. Notificación a Administradores
             $admins = User::where('is_active', true)
-                ->whereHas('role', fn($q) => $q->where('slug', 'admin'))
+                ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
                 ->whereNotIn('id', [$technician->id, $incident->reported_by_user_id])
                 ->get();
 
@@ -266,7 +316,7 @@ class NotificationService
                 $admin->notify(clone $adminNotification);
             }
         } catch (\Throwable $e) {
-            Log::error("Error despachando notificaciones de resolución para {$incident->folio}: " . $e->getMessage());
+            Log::error("Error despachando notificaciones de resolución para {$incident->folio}: ".$e->getMessage());
         }
     }
 
@@ -280,7 +330,7 @@ class NotificationService
         try {
             $incident->loadMissing(['assignedTo']);
             $actionUrl = route('incidents.show', $incident->folio);
-            $excerpt = mb_substr($reason, 0, 80) . (mb_strlen($reason) > 80 ? '...' : '');
+            $excerpt = mb_substr($reason, 0, 80).(mb_strlen($reason) > 80 ? '...' : '');
 
             // 1. Notificar al Técnico GTS asignado
             if ($incident->assignedTo && $incident->assignedTo->is_active) {
@@ -298,7 +348,7 @@ class NotificationService
 
             // 2. Notificar a Administradores
             $admins = User::where('is_active', true)
-                ->whereHas('role', fn($q) => $q->where('slug', 'admin'))
+                ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
                 ->whereNotIn('id', [$rejecter->id, $incident->assigned_to_user_id])
                 ->get();
 
@@ -317,7 +367,7 @@ class NotificationService
                 $admin->notify(clone $adminNotification);
             }
         } catch (\Throwable $e) {
-            Log::error("Error despachando notificaciones de rechazo para {$incident->folio}: " . $e->getMessage());
+            Log::error("Error despachando notificaciones de rechazo para {$incident->folio}: ".$e->getMessage());
         }
     }
 
@@ -337,7 +387,7 @@ class NotificationService
                 $incident->assignedTo->notify(new IncidentNotification(
                     type: 'incident_closed',
                     title: 'Incidencia Cerrada',
-                    message: "{$incident->folio} recibió el visto bueno de cierre por {$closer->name}.",
+                    message: "{$incident->folio} recibió el visto bueno de cierre por {$closer->getTaggedName()}.",
                     incidentId: $incident->id,
                     folio: $incident->folio,
                     actionUrl: $actionUrl,
@@ -348,14 +398,14 @@ class NotificationService
 
             // 2. Notificar a Administradores
             $admins = User::where('is_active', true)
-                ->whereHas('role', fn($q) => $q->where('slug', 'admin'))
+                ->whereHas('role', fn ($q) => $q->where('slug', 'admin'))
                 ->whereNotIn('id', [$closer->id, $incident->assigned_to_user_id])
                 ->get();
 
             $adminNotification = new IncidentNotification(
                 type: 'incident_closed_admin',
                 title: "Incidencia Cerrada: {$incident->folio}",
-                message: "El ticket {$incident->folio} fue cerrado formalmente por {$closer->name}.",
+                message: "El ticket {$incident->folio} fue cerrado formalmente por {$closer->getTaggedName()}.",
                 incidentId: $incident->id,
                 folio: $incident->folio,
                 actionUrl: $actionUrl,
@@ -367,7 +417,41 @@ class NotificationService
                 $admin->notify(clone $adminNotification);
             }
         } catch (\Throwable $e) {
-            Log::error("Error despachando notificaciones de cierre para {$incident->folio}: " . $e->getMessage());
+            Log::error("Error despachando notificaciones de cierre para {$incident->folio}: ".$e->getMessage());
+        }
+    }
+
+    /**
+     * Elimina de forma controlada y segura todas las notificaciones asociadas a un expediente de incidencia.
+     * Garantiza que la incidencia eliminada desaparezca de los centros de notificaciones de todos los roles
+     * sin dejar enlaces rotos ni generar errores 404 al consultar alertas.
+     *
+     * @return int Número de notificaciones eliminadas
+     */
+    public function deleteNotificationsForIncident(int $incidentId, string $folio): int
+    {
+        try {
+            $driver = DB::connection()->getDriverName();
+
+            if ($driver === 'pgsql') {
+                return DB::table('notifications')
+                    ->where(function ($q) use ($incidentId, $folio) {
+                        $q->whereRaw("data::jsonb->>'folio' = ? OR data::jsonb->>'incident_id' = ?", [$folio, (string) $incidentId]);
+                    })
+                    ->delete();
+            }
+
+            return DB::table('notifications')
+                ->where(function ($q) use ($incidentId, $folio) {
+                    $q->where('data', 'LIKE', '%"folio":"'.$folio.'"%')
+                        ->orWhere('data', 'LIKE', '%"incident_id":'.$incidentId.'%')
+                        ->orWhere('data', 'LIKE', '%"incident_id":"'.$incidentId.'"%');
+                })
+                ->delete();
+        } catch (\Throwable $e) {
+            Log::error("Error eliminando notificaciones para incidencia {$folio} (ID: {$incidentId}): ".$e->getMessage());
+
+            return 0;
         }
     }
 }

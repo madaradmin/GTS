@@ -28,7 +28,7 @@ class NotificationController extends Controller
                     'folio' => $notif->data['folio'] ?? null,
                     'icon' => $notif->data['icon'] ?? 'notifications',
                     'level' => $notif->data['level'] ?? 'info',
-                    'read' => !is_null($notif->read_at),
+                    'read' => ! is_null($notif->read_at),
                     'created_at' => $notif->created_at->diffForHumans(),
                     'created_at_exact' => $notif->created_at->format('d M H:i'),
                 ];

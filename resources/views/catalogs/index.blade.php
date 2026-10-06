@@ -182,7 +182,7 @@
                     <span class="text-2xl font-bold font-mono {{ $availabilityRate >= 80 ? 'text-[#10B981]' : ($availabilityRate >= 50 ? 'text-[#E0A21A]' : 'text-[#D83B52]') }}">
                         {{ $availabilityRate }}%
                     </span>
-                    <span class="text-[11px] text-[#707B8A]">SLA parque</span>
+                    <span class="text-[11px] text-[#707B8A]">Disponibilidad estimada</span>
                 </div>
             </div>
         </div>
@@ -321,7 +321,7 @@
 
         <!-- 4. Barra de Filtros y Búsqueda -->
         <div class="bg-[#11151B] border border-[#263241] rounded-xl p-3.5">
-            <form method="GET" action="{{ route('catalogs.index') }}" class="flex flex-col md:flex-row items-center gap-3">
+            <form method="GET" action="{{ route('catalogs.index') }}" class="flex flex-col md:flex-row items-center gap-3" autocomplete="off">
                 <!-- Búsqueda textual -->
                 <div class="relative flex-1 w-full">
                     <span class="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-[#707B8A]">search</span>
@@ -594,7 +594,7 @@
                     </button>
                 </div>
 
-                <form method="POST" action="{{ route('catalogs.store') }}" class="space-y-4">
+                <form method="POST" action="{{ route('catalogs.store') }}" class="space-y-4" autocomplete="off">
                     @csrf
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                         <div>

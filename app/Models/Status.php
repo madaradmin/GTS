@@ -34,4 +34,3 @@ class Status extends Model
         return $this->hasMany(Incident::class);
     }
 }
-

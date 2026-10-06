@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
-use App\Models\Incident;
 use App\Models\Priority;
 use App\Models\User;
 use App\Services\IncidentService;
@@ -67,10 +66,10 @@ class CategoryAndPriorityRefinementTest extends TestCase
         $viewAlta->assertSee('#E06D24');
         $viewAlta->assertDontSee('animate-pulse');
 
-        // 3. Media (Ámbar suave)
+        // 3. Media (Verde institucional diferenciado de alta)
         $viewMedia = $this->blade('<x-badge-priority :priority="$priority" />', ['priority' => $media]);
         $viewMedia->assertSee('Media');
-        $viewMedia->assertSee('#E0A21A');
+        $viewMedia->assertSee('#10B981');
 
         // 4. Baja (Azul grisáceo)
         $viewBaja = $this->blade('<x-badge-priority :priority="$priority" />', ['priority' => $baja]);
@@ -116,7 +115,7 @@ class CategoryAndPriorityRefinementTest extends TestCase
             'priority_id' => $priorityAlta->id,
         ], $user);
 
-        $response = $this->actingAs($user)->get('/incidencias');
+        $response = $this->actingAs($user)->get(route('incidents.index'));
 
         $response->assertOk();
         $response->assertSee('CCTV');

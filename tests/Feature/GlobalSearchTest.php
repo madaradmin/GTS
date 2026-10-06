@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
-use App\Models\Incident;
 use App\Models\Priority;
 use App\Models\User;
 use App\Services\IncidentService;
@@ -51,7 +50,7 @@ class GlobalSearchTest extends TestCase
             'priority_id' => Priority::first()->id,
         ], $user);
 
-        $response = $this->actingAs($user)->get('/incidencias?search=' . $incident->folio);
+        $response = $this->actingAs($user)->get('/Todas las incidencias?search='.$incident->folio);
 
         $response->assertOk();
         $response->assertSee($incident->folio);
@@ -70,7 +69,7 @@ class GlobalSearchTest extends TestCase
             'priority_id' => Priority::first()->id,
         ], $user);
 
-        $response = $this->actingAs($user)->get('/incidencias?search=biom%C3%A9trico');
+        $response = $this->actingAs($user)->get('/Todas las incidencias?search=biom%C3%A9trico');
 
         $response->assertOk();
         $response->assertSee($incident->folio);
@@ -89,7 +88,7 @@ class GlobalSearchTest extends TestCase
             'priority_id' => Priority::first()->id,
         ], $user);
 
-        $response = $this->actingAs($user)->get('/incidencias?search=sobrecalentamiento');
+        $response = $this->actingAs($user)->get('/Todas las incidencias?search=sobrecalentamiento');
 
         $response->assertOk();
         $response->assertSee($incident->folio);
@@ -108,7 +107,7 @@ class GlobalSearchTest extends TestCase
             'priority_id' => Priority::first()->id,
         ], $user);
 
-        $response = $this->actingAs($user)->get('/incidencias?search=Cabecera+Sur');
+        $response = $this->actingAs($user)->get('/Todas las incidencias?search=Cabecera+Sur');
 
         $response->assertOk();
         $response->assertSee($incident->folio);
@@ -128,7 +127,7 @@ class GlobalSearchTest extends TestCase
             'priority_id' => Priority::first()->id,
         ], $user);
 
-        $response = $this->actingAs($user)->get('/incidencias?search=' . urlencode($category->name));
+        $response = $this->actingAs($user)->get('/Todas las incidencias?search='.urlencode($category->name));
 
         $response->assertOk();
         $response->assertSee($incident->folio);
@@ -151,7 +150,7 @@ class GlobalSearchTest extends TestCase
 
         $service->assignIncident($incident, $adminUser, $gtsUser);
 
-        $response = $this->actingAs($adminUser)->get('/incidencias?search=Morales');
+        $response = $this->actingAs($adminUser)->get('/Todas las incidencias?search=Morales');
 
         $response->assertOk();
         $response->assertSee($incident->folio);

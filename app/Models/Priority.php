@@ -36,4 +36,3 @@ class Priority extends Model
         return $this->hasMany(Incident::class);
     }
 }
-

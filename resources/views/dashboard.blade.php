@@ -59,8 +59,8 @@
             <!-- Columna Izquierda / Central: 4 KPIs + 3 Gráficos + Tabla (9 de 12 cols ~ 75%) -->
             <div class="col-span-12 lg:col-span-9 flex flex-col justify-between gap-3 h-full overflow-hidden">
                 
-                <!-- Fila A: 4 KPI Cards Tácticos con Cuadro de Color Sólido Sobrio -->
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 shrink-0">
+                <!-- Fila A: 5 KPI Cards Tácticos Operacionales Dinámicos -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 shrink-0">
                     
                     <!-- KPI 1: Total de incidencias -->
                     <div class="bg-brand-surface border border-brand-border rounded-xl p-2.5 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
@@ -70,20 +70,39 @@
                             </div>
                             <div class="flex flex-col leading-tight min-w-0">
                                 <span class="font-mono text-xl lg:text-2xl font-bold text-[#F2F5F8] tabular-nums">
-                                    {{ $metrics['total_open'] > 0 ? $metrics['total_open'] : 24 }}
+                                    {{ $metrics['total'] }}
                                 </span>
                                 <span class="text-[11px] text-[#7F8A99] truncate">
-                                    Total de incidencias
+                                    Total incidencias
                                 </span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1 mt-1 text-[10px] font-medium text-[#20C997]">
-                            <span class="font-bold">↓ 35%</span>
-                            <span class="text-[#7F8A99] font-normal">vs. semana anterior</span>
+                        <div class="flex items-center gap-1 mt-1 text-[10px] font-medium text-[#7F8A99]">
+                            <span class="truncate">Histórico plataforma</span>
                         </div>
                     </div>
 
-                    <!-- KPI 2: En proceso -->
+                    <!-- KPI 2: Nuevas -->
+                    <div class="bg-brand-surface border border-brand-border rounded-xl p-2.5 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-lg bg-[#0284C7] flex items-center justify-center text-white shrink-0 shadow-sm">
+                                <span class="material-symbols-outlined text-[18px]">inbox</span>
+                            </div>
+                            <div class="flex flex-col leading-tight min-w-0">
+                                <span class="font-mono text-xl lg:text-2xl font-bold text-[#F2F5F8] tabular-nums">
+                                    {{ $metrics['new'] }}
+                                </span>
+                                <span class="text-[11px] text-[#7F8A99] truncate">
+                                    Nuevas
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 mt-1 text-[10px] font-medium {{ $metrics['new'] > 0 ? 'text-[#38BDF8]' : 'text-[#7F8A99]' }}">
+                            <span class="truncate">Por asignar</span>
+                        </div>
+                    </div>
+
+                    <!-- KPI 3: En proceso -->
                     <div class="bg-brand-surface border border-brand-border rounded-xl p-2.5 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
                         <div class="flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-lg bg-[#D99A18] flex items-center justify-center text-white shrink-0 shadow-sm">
@@ -91,20 +110,19 @@
                             </div>
                             <div class="flex flex-col leading-tight min-w-0">
                                 <span class="font-mono text-xl lg:text-2xl font-bold text-[#F2F5F8] tabular-nums">
-                                    {{ $metrics['in_attention'] > 0 ? $metrics['in_attention'] : 6 }}
+                                    {{ $metrics['in_process'] }}
                                 </span>
                                 <span class="text-[11px] text-[#7F8A99] truncate">
                                     En proceso
                                 </span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1 mt-1 text-[10px] font-medium text-[#20C997]">
-                            <span class="font-bold">↓ 50%</span>
-                            <span class="text-[#7F8A99] font-normal">vs. semana anterior</span>
+                        <div class="flex items-center gap-1 mt-1 text-[10px] font-medium text-[#FBBF24]">
+                            <span class="truncate">Atención técnica activa</span>
                         </div>
                     </div>
 
-                    <!-- KPI 3: Resueltas -->
+                    <!-- KPI 4: Resueltas -->
                     <div class="bg-brand-surface border border-brand-border rounded-xl p-2.5 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
                         <div class="flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-lg bg-[#12B886] flex items-center justify-center text-white shrink-0 shadow-sm">
@@ -112,7 +130,7 @@
                             </div>
                             <div class="flex flex-col leading-tight min-w-0">
                                 <span class="font-mono text-xl lg:text-2xl font-bold text-[#F2F5F8] tabular-nums">
-                                    {{ $metrics['resolved_in_period'] > 0 ? $metrics['resolved_in_period'] : 16 }}
+                                    {{ $metrics['resolved'] }}
                                 </span>
                                 <span class="text-[11px] text-[#7F8A99] truncate">
                                     Resueltas
@@ -120,12 +138,11 @@
                             </div>
                         </div>
                         <div class="flex items-center gap-1 mt-1 text-[10px] font-medium text-[#20C997]">
-                            <span class="font-bold">↑ 33%</span>
-                            <span class="text-[#7F8A99] font-normal">vs. semana anterior</span>
+                            <span class="truncate">Cerradas y concluidas</span>
                         </div>
                     </div>
 
-                    <!-- KPI 4: Críticas -->
+                    <!-- KPI 5: Críticas -->
                     <div class="bg-brand-surface border border-brand-border rounded-xl p-2.5 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
                         <div class="flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-lg bg-[#D83B52] flex items-center justify-center text-white shrink-0 shadow-sm">
@@ -133,205 +150,139 @@
                             </div>
                             <div class="flex flex-col leading-tight min-w-0">
                                 <span class="font-mono text-xl lg:text-2xl font-bold text-[#F2F5F8] tabular-nums">
-                                    {{ $metrics['open_critical'] > 0 ? $metrics['open_critical'] : 2 }}
+                                    {{ $metrics['critical'] }}
                                 </span>
                                 <span class="text-[11px] text-[#7F8A99] truncate">
                                     Críticas
                                 </span>
                             </div>
                         </div>
-                        <div class="flex items-center gap-1 mt-1 text-[10px] font-medium text-[#20C997]">
-                            <span class="font-bold">↓ 60%</span>
-                            <span class="text-[#7F8A99] font-normal">vs. semana anterior</span>
+                        <div class="flex items-center gap-1 mt-1 text-[10px] font-medium {{ $metrics['critical'] > 0 ? 'text-[#F87171]' : 'text-[#7F8A99]' }}">
+                            <span class="truncate">Severidad alta activa</span>
                         </div>
                     </div>
 
                 </div>
 
-                <!-- Fila B: 3 Gráficos Operativos (Por Tipo, Por Estado, Por Prioridad) -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 h-[152px] shrink-0">
+                <!-- Fila B: 2 Gráficos Operativos Dinámicos Rediseñados al 50% / 50% (Por Tipo y Por Prioridad) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 h-[152px] shrink-0">
                     
-                    <!-- Gráfico 1: Incidencias por tipo (Donut Chart SVG) -->
-                    <div class="bg-brand-surface border border-brand-border rounded-xl p-2.5 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
-                        <h2 class="text-xs font-bold text-[#F2F5F8]">
-                            Incidencias por tipo
-                        </h2>
+                    <!-- Gráfico 1: Incidencias por tipo (50% de ancho) -->
+                    <div class="bg-brand-surface border border-brand-border rounded-xl p-3 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
+                        <div class="flex items-center justify-between border-b border-[#202731] pb-1.5 shrink-0">
+                            <h2 class="text-xs font-bold text-[#F2F5F8] flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[15px] text-[#3D82C6]">pie_chart</span>
+                                <span>Incidencias por tipo</span>
+                            </h2>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono text-[#7E8998] bg-[#151B23] border border-[#202731]">
+                                Categorías AIFA
+                            </span>
+                        </div>
                         
-                        <div class="flex items-center justify-between gap-2 flex-1 min-h-0">
-                            <!-- Donut Vectorial con 24 Total al Centro -->
+                        <div class="flex items-center justify-between gap-4 flex-1 min-h-0 pt-1.5">
+                            <!-- Donut Vectorial con Conteo Total Dinámico al Centro -->
                             <div class="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                                @php
+                                    $catCumOffset = 0;
+                                @endphp
                                 <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90">
                                     <circle cx="50" cy="50" r="38" fill="none" stroke="#1B2129" stroke-width="12" />
-                                    <!-- Segmento 1: Cámaras (37% azul #1E5FA7) -->
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#1E5FA7" stroke-width="12" stroke-dasharray="88 238" stroke-dashoffset="0" />
-                                    <!-- Segmento 2: Puertas (25% verde #16A878) -->
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#16A878" stroke-width="12" stroke-dasharray="60 238" stroke-dashoffset="-88" />
-                                    <!-- Segmento 3: Pantallas (17% naranja #D99216) -->
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#D99216" stroke-width="12" stroke-dasharray="41 238" stroke-dashoffset="-148" />
-                                    <!-- Segmento 4: Radios (12% morado #7256B8) -->
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#7256B8" stroke-width="12" stroke-dasharray="29 238" stroke-dashoffset="-189" />
-                                    <!-- Segmento 5: Otros (8% gris #687383) -->
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#687383" stroke-width="12" stroke-dasharray="19 238" stroke-dashoffset="-218" />
-                                </svg>
-                                <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                                    <span class="font-mono text-sm font-bold text-[#F2F5F8] leading-none">24</span>
-                                    <span class="text-[8px] text-[#707B8A] mt-0.5">Total</span>
-                                </div>
-                            </div>
-
-                            <!-- Leyenda de Categorías con Conteo y Porcentaje (Catálogo Centralizado) -->
-                            <div class="flex flex-col gap-0.5 text-[10px] min-w-0 flex-1">
-                                @if(!empty($distribution['categories']))
                                     @foreach($distribution['categories'] as $catItem)
-                                        <div class="flex items-center justify-between">
-                                            <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate" title="{{ $catItem['name'] }}">
-                                                <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: {{ $catItem['color'] }}"></span>
-                                                <span class="truncate">{{ $catItem['name'] }}</span>
-                                            </span>
-                                            <span class="font-mono text-[#9AA5B4] shrink-0 ml-1">
-                                                {{ $catItem['count'] }} 
-                                                <span class="text-[#707B8A] text-[9px]">{{ $catItem['percentage'] }}%</span>
-                                            </span>
-                                        </div>
+                                        @php
+                                            $catDash = $distribution['total_active'] > 0 ? round(($catItem['count'] / $distribution['total_active']) * 238.76) : 0;
+                                        @endphp
+                                        @if($catDash > 0)
+                                            <circle cx="50" cy="50" r="38" fill="none" stroke="{{ $catItem['color'] }}" stroke-width="12" stroke-dasharray="{{ $catDash }} 239" stroke-dashoffset="-{{ $catCumOffset }}" />
+                                            @php $catCumOffset += $catDash; @endphp
+                                        @endif
                                     @endforeach
-                                @else
-                                    <div class="flex items-center justify-between">
-                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-[#06B6D4] shrink-0"></span>
-                                            CCTV
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                                    <span class="font-mono text-sm font-bold text-[#F2F5F8] leading-none">{{ $distribution['total_active'] }}</span>
+                                    <span class="text-[8px] text-[#707B8A] mt-0.5">Activas</span>
+                                </div>
+                            </div>
+
+                            <!-- Leyenda de Categorías con Conteo y Porcentaje Real en Grid de 2 columnas para aprovechar el ancho -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 text-[10.5px] min-w-0 flex-1 overflow-y-auto scrollbar-thin pr-1">
+                                @forelse($distribution['categories'] as $catItem)
+                                    <div class="flex items-center justify-between bg-[#11161D]/50 px-2 py-0.5 rounded border border-[#1A222C]">
+                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate" title="{{ $catItem['name'] }}">
+                                            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: {{ $catItem['color'] }}"></span>
+                                            <span class="truncate text-[10.5px]">{{ $catItem['name'] }}</span>
                                         </span>
-                                        <span class="font-mono text-[#9AA5B4] shrink-0">9 <span class="text-[#707B8A] text-[9px]">37%</span></span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-[#8B5CF6] shrink-0"></span>
-                                            Control de Acceso
+                                        <span class="font-mono text-[#9AA5B4] shrink-0 ml-1 text-[10px]">
+                                            <span class="font-bold text-[#F2F5F8]">{{ $catItem['count'] }}</span> 
+                                            <span class="text-[#707B8A] text-[9px]">({{ $catItem['percentage'] }}%)</span>
                                         </span>
-                                        <span class="font-mono text-[#9AA5B4] shrink-0">6 <span class="text-[#707B8A] text-[9px]">25%</span></span>
                                     </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-[#F59E0B] shrink-0"></span>
-                                            FIDS
-                                        </span>
-                                        <span class="font-mono text-[#9AA5B4] shrink-0">4 <span class="text-[#707B8A] text-[9px]">17%</span></span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-[#3B82F6] shrink-0"></span>
-                                            TETRA
-                                        </span>
-                                        <span class="font-mono text-[#9AA5B4] shrink-0">3 <span class="text-[#707B8A] text-[9px]">12%</span></span>
-                                    </div>
-                                    <div class="flex items-center justify-between">
-                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
-                                            <span class="w-1.5 h-1.5 rounded-full bg-[#10B981] shrink-0"></span>
-                                            Periféricos
-                                        </span>
-                                        <span class="font-mono text-[#9AA5B4] shrink-0">2 <span class="text-[#707B8A] text-[9px]">8%</span></span>
-                                    </div>
-                                @endif
+                                @empty
+                                    <div class="col-span-2 text-[10px] text-[#707B8A] py-2 text-center">Sin incidencias activas</div>
+                                @endforelse
                             </div>
                         </div>
                     </div>
 
-                    <!-- Gráfico 2: Incidencias por estado (Bar Chart con Escala) -->
-                    <div class="bg-brand-surface border border-brand-border rounded-xl p-2.5 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
-                        <h2 class="text-xs font-bold text-[#F2F5F8]">
-                            Incidencias por estado
-                        </h2>
-
-                        <!-- Contenedor del Gráfico de Barras con Eje Y -->
-                        <div class="flex items-end gap-2 flex-1 pt-1.5 pb-0.5">
-                            <!-- Eje Y -->
-                            <div class="flex flex-col justify-between h-[68px] text-[8px] font-mono text-[#707B8A] pr-1 shrink-0">
-                                <span>20</span>
-                                <span>15</span>
-                                <span>10</span>
-                                <span>5</span>
-                                <span>0</span>
-                            </div>
-
-                            <!-- Área de Barras Verticales -->
-                            <div class="flex-1 h-[68px] flex items-end justify-around border-b border-[#252C35] pb-0.5">
-                                <!-- Barra 1: Resueltas (16) -->
-                                <div class="flex flex-col items-center gap-0.5 group">
-                                    <span class="text-[9px] font-mono font-bold text-[#16A878]">16</span>
-                                    <div class="w-5 rounded-t-sm bg-[#16A878] transition-all group-hover:brightness-110" style="height: 46px;"></div>
-                                    <span class="text-[8px] text-[#8D98A8] mt-0.5">Resueltas</span>
-                                </div>
-
-                                <!-- Barra 2: En proceso (6) -->
-                                <div class="flex flex-col items-center gap-0.5 group">
-                                    <span class="text-[9px] font-mono font-bold text-[#D99216]">6</span>
-                                    <div class="w-5 rounded-t-sm bg-[#D99216] transition-all group-hover:brightness-110" style="height: 18px;"></div>
-                                    <span class="text-[8px] text-[#8D98A8] mt-0.5">En proceso</span>
-                                </div>
-
-                                <!-- Barra 3: Críticas (2) -->
-                                <div class="flex flex-col items-center gap-0.5 group">
-                                    <span class="text-[9px] font-mono font-bold text-[#D83B52]">2</span>
-                                    <div class="w-5 rounded-t-sm bg-[#D83B52] transition-all group-hover:brightness-110" style="height: 8px;"></div>
-                                    <span class="text-[8px] text-[#8D98A8] mt-0.5">Críticas</span>
-                                </div>
-
-                                <!-- Barra 4: Canceladas (0) -->
-                                <div class="flex flex-col items-center gap-0.5 group">
-                                    <span class="text-[9px] font-mono font-bold text-[#687383]">0</span>
-                                    <div class="w-5 rounded-t-sm bg-[#687383]" style="height: 2px;"></div>
-                                    <span class="text-[8px] text-[#8D98A8] mt-0.5">Canceladas</span>
-                                </div>
-                            </div>
+                    <!-- Gráfico 2: Incidencias por prioridad (50% de ancho) -->
+                    <div class="bg-brand-surface border border-brand-border rounded-xl p-3 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
+                        <div class="flex items-center justify-between border-b border-[#202731] pb-1.5 shrink-0">
+                            <h2 class="text-xs font-bold text-[#F2F5F8] flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[15px] text-[#F59E0B]">signal_cellular_alt</span>
+                                <span>Incidencias por prioridad</span>
+                            </h2>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-mono text-[#7E8998] bg-[#151B23] border border-[#202731]">
+                                Severidad OACI
+                            </span>
                         </div>
-                    </div>
 
-                    <!-- Gráfico 3: Incidencias por prioridad (Donut Chart SVG) -->
-                    <div class="bg-brand-surface border border-brand-border rounded-xl p-2.5 flex flex-col justify-between shadow-enterprise-sm hover:border-[#2A3440] transition-all">
-                        <h2 class="text-xs font-bold text-[#F2F5F8]">
-                            Incidencias por prioridad
-                        </h2>
-
-                        <div class="flex items-center justify-between gap-2 flex-1 min-h-0">
-                            <!-- Donut Vectorial -->
+                        <div class="flex items-center justify-between gap-4 flex-1 min-h-0 pt-1.5">
+                            <!-- Donut Vectorial Dinámico -->
+                            @php
+                                $prioColors = [
+                                    'critica' => '#D83B52',
+                                    'alta' => '#F59E0B',
+                                    'media' => '#10B981',
+                                    'baja' => '#1E5FA7',
+                                ];
+                                $prioCumOffset = 0;
+                            @endphp
                             <div class="relative w-24 h-24 shrink-0 flex items-center justify-center">
                                 <svg viewBox="0 0 100 100" class="w-full h-full -rotate-90">
                                     <circle cx="50" cy="50" r="38" fill="none" stroke="#1B2129" stroke-width="12" />
-                                    <!-- Alta / Crítica (33% rojo #D83B52) -->
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#D83B52" stroke-width="12" stroke-dasharray="79 238" stroke-dashoffset="0" />
-                                    <!-- Media (50% naranja #D99216) -->
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#D99216" stroke-width="12" stroke-dasharray="119 238" stroke-dashoffset="-79" />
-                                    <!-- Baja (17% azul #1E5FA7) -->
-                                    <circle cx="50" cy="50" r="38" fill="none" stroke="#1E5FA7" stroke-width="12" stroke-dasharray="40 238" stroke-dashoffset="-198" />
+                                    @foreach($prioritiesSummary['items'] as $prioItem)
+                                        @php
+                                            $prioColor = $prioColors[$prioItem['slug']] ?? '#687383';
+                                            $prioDash = $prioritiesSummary['total'] > 0 ? round(($prioItem['count'] / $prioritiesSummary['total']) * 238.76) : 0;
+                                        @endphp
+                                        @if($prioDash > 0)
+                                            <circle cx="50" cy="50" r="38" fill="none" stroke="{{ $prioColor }}" stroke-width="12" stroke-dasharray="{{ $prioDash }} 239" stroke-dashoffset="-{{ $prioCumOffset }}" />
+                                            @php $prioCumOffset += $prioDash; @endphp
+                                        @endif
+                                    @endforeach
                                 </svg>
                                 <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                                    <span class="font-mono text-sm font-bold text-[#F2F5F8] leading-none">24</span>
-                                    <span class="text-[8px] text-[#707B8A] mt-0.5">Total</span>
+                                    <span class="font-mono text-sm font-bold text-[#F2F5F8] leading-none">{{ $prioritiesSummary['total'] }}</span>
+                                    <span class="text-[8px] text-[#707B8A] mt-0.5">Activas</span>
                                 </div>
                             </div>
 
-                            <!-- Leyenda de Prioridades -->
-                            <div class="flex flex-col gap-1.5 text-[10px] min-w-0 flex-1">
-                                <div class="flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5 text-[#DDE3EA]">
-                                        <span class="w-2 h-2 rounded-full bg-[#D83B52] shrink-0"></span>
-                                        Alta
-                                    </span>
-                                    <span class="font-mono text-[#9AA5B4]">8 <span class="text-[#707B8A] text-[9px]">33%</span></span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5 text-[#DDE3EA]">
-                                        <span class="w-2 h-2 rounded-full bg-[#D99216] shrink-0"></span>
-                                        Media
-                                    </span>
-                                    <span class="font-mono text-[#9AA5B4]">12 <span class="text-[#707B8A] text-[9px]">50%</span></span>
-                                </div>
-                                <div class="flex items-center justify-between">
-                                    <span class="flex items-center gap-1.5 text-[#DDE3EA]">
-                                        <span class="w-2 h-2 rounded-full bg-[#1E5FA7] shrink-0"></span>
-                                        Baja
-                                    </span>
-                                    <span class="font-mono text-[#9AA5B4]">4 <span class="text-[#707B8A] text-[9px]">17%</span></span>
-                                </div>
+                            <!-- Leyenda de Prioridades Dinámica en Grid de 2 columnas -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5 text-[10.5px] min-w-0 flex-1 pr-1">
+                                @forelse($prioritiesSummary['items'] as $prioItem)
+                                    @php $prioColor = $prioColors[$prioItem['slug']] ?? '#687383'; @endphp
+                                    <div class="flex items-center justify-between bg-[#11161D]/50 px-2.5 py-1 rounded border border-[#1A222C]">
+                                        <span class="flex items-center gap-1.5 text-[#DDE3EA] truncate">
+                                            <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: {{ $prioColor }}"></span>
+                                            <span class="truncate font-medium text-[11px]">{{ $prioItem['name'] }}</span>
+                                        </span>
+                                        <span class="font-mono text-[#9AA5B4] shrink-0 ml-1 text-[10.5px]">
+                                            <span class="font-bold text-[#F2F5F8]">{{ $prioItem['count'] }}</span>
+                                            <span class="text-[#707B8A] text-[9.5px]">({{ $prioItem['percentage'] }}%)</span>
+                                        </span>
+                                    </div>
+                                @empty
+                                    <div class="col-span-2 text-[10px] text-[#707B8A] text-center">Sin prioridades activas</div>
+                                @endforelse
                             </div>
                         </div>
                     </div>
@@ -381,9 +332,20 @@
                                             title="Ver expediente {{ $inc->folio }}"
                                         >
                                             <td class="py-1.5 px-3.5 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
-                                                <a href="{{ route('incidents.show', $inc->folio) }}" class="group-hover:underline">
-                                                    {{ $inc->folio }}
-                                                </a>
+                                                <div class="flex items-center gap-1.5">
+                                                    <a href="{{ route('incidents.show', $inc->folio) }}" class="group-hover:underline">
+                                                        {{ $inc->folio }}
+                                                    </a>
+                                                    @if($inc->isFromCco())
+                                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[8.5px] font-bold font-mono tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Procedencia: APOC-CCO">CCO</span>
+                                                    @elseif($inc->isFromCsa())
+                                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[8.5px] font-bold font-mono tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20" title="Procedencia: APOC-CSA">CSA</span>
+                                                    @elseif($inc->isFromGts())
+                                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[8.5px] font-bold font-mono tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" title="Procedencia: GTS">GTS</span>
+                                                    @elseif($inc->isFromAdmin())
+                                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[8.5px] font-bold font-mono tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Procedencia: Administrador">ADMIN</span>
+                                                    @endif
+                                                </div>
                                             </td>
                                             <td class="py-1.5 px-3.5 text-[#7E8998] font-mono whitespace-nowrap">
                                                 {{ $inc->created_at->format('d/m/Y H:i') }}
@@ -405,95 +367,9 @@
                                         </tr>
                                     @endforeach
                                 @else
-                                    <!-- Filas Pre-cargadas de Alta Fidelidad si la base de datos no tiene incidentes -->
-                                    <tr 
-                                        onclick="window.location='{{ route('incidents.index') }}'"
-                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
-                                    >
-                                        <td class="py-1.5 px-3.5 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
-                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0043</a>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 16:48</td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">videocam</span> Cámaras</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">En proceso</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]">Alta</span>
-                                        </td>
-                                    </tr>
-                                    <tr 
-                                        onclick="window.location='{{ route('incidents.index') }}'"
-                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
-                                    >
-                                        <td class="py-1.5 px-3.5 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
-                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0042</a>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 15:32</td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">door_front</span> Puertas</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">En proceso</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(216,59,82,0.15)] text-[#E66A7A] border border-[rgba(216,59,82,0.30)]">Alta</span>
-                                        </td>
-                                    </tr>
-                                    <tr 
-                                        onclick="window.location='{{ route('incidents.index') }}'"
-                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
-                                    >
-                                        <td class="py-1.5 px-3.5 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
-                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0041</a>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 14:17</td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">tv</span> Pantallas</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">Media</span>
-                                        </td>
-                                    </tr>
-                                    <tr 
-                                        onclick="window.location='{{ route('incidents.index') }}'"
-                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
-                                    >
-                                        <td class="py-1.5 px-3.5 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
-                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0040</a>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 12:06</td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">radio</span> Radios</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]">Media</span>
-                                        </td>
-                                    </tr>
-                                    <tr 
-                                        onclick="window.location='{{ route('incidents.index') }}'"
-                                        class="hover:bg-[#151B23] cursor-pointer transition-colors group"
-                                    >
-                                        <td class="py-1.5 px-3.5 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
-                                            <a href="{{ route('incidents.index') }}" class="group-hover:underline">ST-2026-0039</a>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 text-[#7E8998] font-mono whitespace-nowrap">10/09/2026 11:23</td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-[#707B8A]">videocam</span> Cámaras</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]">Resuelta</span>
-                                        </td>
-                                        <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                            <span class="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)]">Baja</span>
+                                    <tr>
+                                        <td colspan="5" class="py-6 text-center text-xs text-[#7E8998]">
+                                            No hay incidencias registradas en el sistema.
                                         </td>
                                     </tr>
                                 @endif
@@ -510,58 +386,46 @@
                 
                 <!-- Panel 1: Estado de sistemas (monitoreo) -->
                 <div class="bg-brand-surface border border-brand-border rounded-xl p-3 flex flex-col justify-between shadow-enterprise-sm shrink-0">
-                    <h2 class="text-xs font-bold text-[#F2F5F8] mb-1.5">
-                        Estado de sistemas (monitoreo)
-                    </h2>
+                    <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-[#202731]">
+                        <h2 class="text-xs font-bold text-[#F2F5F8] flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[15px] text-[#3D82C6]">hub</span>
+                            <span>Estado de sistemas (monitoreo)</span>
+                        </h2>
+                        @if(($systemsHealth['total'] ?? 0) > 0)
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold font-mono border"
+                                  style="background-color: {{ $systemsHealth['badge_bg'] }}; color: {{ $systemsHealth['color'] }}; border-color: {{ $systemsHealth['badge_border'] }};"
+                                  title="Disponibilidad: {{ $systemsHealth['active'] }}/{{ $systemsHealth['total'] }} sistemas operativos">
+                                <span class="w-1.5 h-1.5 rounded-full" style="background-color: {{ $systemsHealth['color'] }}"></span>
+                                {{ $systemsHealth['state'] }} ({{ $systemsHealth['percentage'] }}%)
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono text-[#707B8A] bg-[#151B23] border border-[#202731]">
+                                Sin registros
+                            </span>
+                        @endif
+                    </div>
 
-                    <div class="space-y-2 text-xs">
-                        <div class="flex items-center justify-between">
-                            <span class="flex items-center gap-2 text-[#D6DCE4]">
-                                <span class="material-symbols-outlined text-[17px] text-brand-text-muted">desktop_windows</span>
-                                Cámaras de seguridad
-                            </span>
-                            <span class="flex items-center gap-1.5 text-[11px] font-medium text-[#20C997]">
-                                <span class="w-1.5 h-1.5 rounded-full bg-[#20C997]"></span>
-                                Operativo
-                            </span>
-                        </div>
-
-                        <div class="flex items-center justify-between">
-                            <span class="flex items-center gap-2 text-[#D6DCE4]">
-                                <span class="material-symbols-outlined text-[17px] text-brand-text-muted">door_front</span>
-                                Puertas de acceso
-                            </span>
-                            <span class="flex items-center gap-1.5 text-[11px] font-medium text-[#20C997]">
-                                <span class="w-1.5 h-1.5 rounded-full bg-[#20C997]"></span>
-                                Operativo
-                            </span>
-                        </div>
-
-                        <div class="flex items-center justify-between">
-                            <span class="flex items-center gap-2 text-[#D6DCE4]">
-                                <span class="material-symbols-outlined text-[17px] text-brand-text-muted">tv</span>
-                                Pantallas informativas
-                            </span>
-                            <span class="flex items-center gap-1.5 text-[11px] font-medium text-[#20C997]">
-                                <span class="w-1.5 h-1.5 rounded-full bg-[#20C997]"></span>
-                                Operativo
-                            </span>
-                        </div>
-
-                        <div class="flex items-center justify-between">
-                            <span class="flex items-center gap-2 text-[#D6DCE4]">
-                                <span class="material-symbols-outlined text-[17px] text-brand-text-muted">radio</span>
-                                Radios de comunicación
-                            </span>
-                            <span class="flex items-center gap-1.5 text-[11px] font-medium text-[#E0A21A]">
-                                <span class="w-1.5 h-1.5 rounded-full bg-[#E0A21A]"></span>
-                                Intermitente
-                            </span>
-                        </div>
+                    <div class="space-y-1.5 text-xs max-h-48 overflow-y-auto scrollbar-thin pr-1">
+                        @forelse($systemsHealth['systems'] ?? [] as $system)
+                            <div class="flex items-center justify-between py-0.5">
+                                <span class="flex items-center gap-2 text-[#D6DCE4] truncate min-w-0" title="{{ $system['name'] }} ({{ $system['code'] ?? 'S/C' }})">
+                                    <span class="material-symbols-outlined text-[17px] text-brand-text-muted shrink-0">{{ $system['icon'] }}</span>
+                                    <span class="truncate">{{ $system['name'] }}</span>
+                                </span>
+                                <span class="flex items-center gap-1.5 text-[11px] font-medium shrink-0 ml-1.5" style="color: {{ $system['status_color'] }}">
+                                    <span class="w-1.5 h-1.5 rounded-full shrink-0" style="background-color: {{ $system['status_color'] }}"></span>
+                                    {{ $system['status_label'] }}
+                                </span>
+                            </div>
+                        @empty
+                            <div class="py-3 text-center text-xs text-[#707B8A]">
+                                No hay sistemas registrados en el catálogo.
+                            </div>
+                        @endforelse
                     </div>
 
                     <a 
-                        href="{{ route('incidents.index') }}" 
+                        href="{{ route('catalogs.index') }}" 
                         class="mt-2 pt-1.5 border-t border-brand-border/60 text-[10px] font-medium text-[#3D82C6] hover:text-[#5B9FE0] flex items-center justify-end gap-1 transition-colors"
                     >
                         <span>Ver detalle de sistemas</span>
@@ -609,7 +473,7 @@
 
                             <!-- Botón 3: Ver indicadores -->
                             <a 
-                                href="{{ route('dashboard') }}"
+                                href="{{ route('indicators.index') }}"
                                 class="w-full p-1.5 rounded-lg bg-[#0F141B] border border-[#252C35] hover:border-[#2A3440] hover:bg-[#151A21] text-[#E2E7ED] flex items-center gap-2.5 transition-all group"
                             >
                                 <div class="w-6 h-6 rounded-md bg-[#151A21] border border-[#252C35] flex items-center justify-center text-[#8A95A4] shrink-0 group-hover:text-white group-hover:bg-[#1A222C] transition-colors">
@@ -621,16 +485,17 @@
                                 </div>
                             </a>
 
-                            <!-- Botón 4: Generar reporte -->
+                            <!-- Botón 4: Descargar reporte -->
                             <a 
                                 href="{{ route('reports.index') }}"
                                 class="w-full p-1.5 rounded-lg bg-[#0F141B] border border-[#252C35] hover:border-[#2A3440] hover:bg-[#151A21] text-[#E2E7ED] flex items-center gap-2.5 transition-all group"
+                                title="Descargar reporte"
                             >
                                 <div class="w-6 h-6 rounded-md bg-[#151A21] border border-[#252C35] flex items-center justify-center text-[#8A95A4] shrink-0 group-hover:text-white group-hover:bg-[#1A222C] transition-colors">
                                     <span class="material-symbols-outlined text-[15px]">description</span>
                                 </div>
                                 <div class="flex flex-col text-left leading-tight">
-                                    <span class="text-xs font-semibold text-[#E2E7ED]">Generar reporte</span>
+                                    <span class="text-xs font-semibold text-[#E2E7ED]">Descargar reporte</span>
                                     <span class="text-[9px] text-[#8A95A4]">Exportar información</span>
                                 </div>
                             </a>

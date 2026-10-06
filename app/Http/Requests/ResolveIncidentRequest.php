@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ResolveIncidentRequest extends FormRequest
@@ -21,7 +22,7 @@ class ResolveIncidentRequest extends FormRequest
     /**
      * Reglas de validación para marcar una incidencia como resuelta.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -49,4 +50,3 @@ class ResolveIncidentRequest extends FormRequest
         ];
     }
 }
-

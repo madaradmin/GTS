@@ -52,4 +52,3 @@ class PrioritySeeder extends Seeder
         }
     }
 }
-

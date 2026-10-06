@@ -43,6 +43,23 @@
                     <!-- Badge de Prioridad -->
                     <x-badge-priority :priority="$incident->priority" />
 
+                    <!-- Procedencia CCO / CSA -->
+                    @if($incident->isFromCco())
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold text-xs font-mono uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30" title="Procedencia de la incidencia">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                            APOC-CCO
+                        </span>
+                    @elseif($incident->isFromCsa())
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold text-xs font-mono uppercase tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/30" title="Procedencia de la incidencia">
+                            <span class="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
+                            APOC-CSA
+                        </span>
+                    @elseif($incident->origin_group)
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-xs font-mono uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/30">
+                            {{ $incident->origin_group }}
+                        </span>
+                    @endif
+
                     <span class="text-xs text-outline font-mono hidden sm:inline">
                         | {{ $incident->category->name }}
                     </span>
@@ -79,7 +96,7 @@
                         class="inline-flex items-center gap-2 px-4 py-2.5 bg-surface-container-high hover:bg-surface-container text-primary border border-border-subtle font-semibold text-xs rounded-xl shadow-sm transition-all"
                     >
                         <span class="material-symbols-outlined text-[18px]">sync_alt</span>
-                        <span>{{ $incident->assignedTo ? 'Reasignar Especialista' : 'Asignar Especialista' }}</span>
+                        <span>{{ ($incident->assignedTo || $incident->isAssignedToTics()) ? 'Reasignar Especialista' : 'Asignar Especialista' }}</span>
                     </button>
                 @endcan
 
@@ -147,11 +164,15 @@
 
         <!-- Banner de Incidencia Cerrada Definitiva (Inmutable - Paso 25) -->
         @if ($incident->status->code === 'CERRADA')
+            @php
+                $closeHistory = $incident->histories->first(fn($h) => $h->action === 'CERRADA');
+                $closerUser = $closeHistory?->user;
+            @endphp
             <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-700/60 text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
                 <div class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
                     <span class="material-symbols-outlined text-slate-400 text-[22px]">lock</span>
                     <span>Expediente Cerrado y Archivado — Modo de Solo Lectura Inmutable</span>
-                    <span class="text-outline font-normal hidden md:inline">• Visto Bueno otorgado por APOC</span>
+                    <span class="text-outline font-normal hidden md:inline">• Visto Bueno otorgado por {{ $closerUser ? $closerUser->getTaggedName() : 'Operador' }}</span>
                 </div>
                 <div class="font-mono text-xs text-outline flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[16px]">task_alt</span>
@@ -184,7 +205,7 @@
                 <div class="flex items-center gap-2.5 text-xs sm:text-sm font-semibold">
                     <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
                     <span>Incidencia en Atención Técnica y Diagnóstico de Campo</span>
-                    <span class="text-outline font-normal hidden md:inline">• Responsable: {{ $incident->assignedTo?->name }}</span>
+                    <span class="text-outline font-normal hidden md:inline">• Responsable: {{ $incident->isAssignedToTics() ? 'TICS' : ($incident->assignedTo?->name ?? 'Sin asignar') }}</span>
                 </div>
                 <div class="font-mono text-xs text-amber-400/80 flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[16px]">schedule</span>
@@ -290,7 +311,7 @@
                         @if($incident->status->code === 'RESUELTA')
                             <div class="p-3 bg-[#123A70]/25 rounded-lg border border-[#164A8A]/40 text-xs text-[#A8C4E6] flex items-center gap-2">
                                 <span class="material-symbols-outlined text-[18px] text-[#3D82C6]">pending_actions</span>
-                                <span>En espera de validación de servicio y visto bueno por el Centro de Operaciones (APOC) para proceder con el cierre formal del ticket.</span>
+                                <span>En espera de validación de servicio y visto bueno para proceder con el cierre formal del ticket.</span>
                             </div>
                         @endif
                     </div>
@@ -480,7 +501,7 @@
                                         {{ $h->action }}
                                     </span>
                                     <span class="text-outline">•</span>
-                                    <span class="font-medium text-on-surface">{{ $h->user?->name ?? 'Sistema' }}</span>
+                                    <span class="font-medium text-on-surface">{{ $h->user ? $h->user->getTaggedName() : 'Sistema' }}</span>
                                     <span class="text-outline">•</span>
                                     <span class="font-mono text-[11px] text-outline">{{ $h->created_at->format('d M Y H:i:s') }}</span>
                                 </div>
@@ -513,7 +534,7 @@
                                     <div class="p-3.5 bg-primary/5 rounded-xl border border-primary/20 text-xs text-on-surface leading-relaxed mt-1">
                                         <div class="flex items-center gap-1.5 text-primary font-semibold text-[11px] mb-1">
                                             <span class="material-symbols-outlined text-[15px]">verified</span>
-                                            <span>Conformidad Operacional y Cierre Formal (APOC):</span>
+                                            <span>Conformidad Operacional y Cierre Formal ({{ $h->user ? $h->user->getRoleTag() : 'VoBo' }}):</span>
                                         </div>
                                         <p class="whitespace-pre-line text-on-surface-variant font-sans">{{ $h->comment }}</p>
                                     </div>
@@ -545,10 +566,25 @@
                 <div class="bg-surface-subtle border border-border-subtle p-6 rounded-xl shadow-sm flex flex-col gap-4">
                     <h2 class="text-xs font-semibold uppercase tracking-wider text-on-surface-variant flex items-center gap-2 pb-2 border-b border-border-subtle">
                         <span class="material-symbols-outlined text-primary text-[18px]">badge</span>
-                        Responsable Técnico GTS
+                        Responsable Técnico
                     </h2>
 
-                    @if($incident->assignedTo)
+                    @if($incident->isAssignedToTics())
+                        <div class="flex items-center gap-3 bg-surface-container-low p-3.5 rounded-xl border border-border-subtle">
+                            <div class="w-10 h-10 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center font-mono font-bold text-primary text-sm">
+                                TI
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <span class="font-semibold text-xs text-on-surface truncate">TICS</span>
+                                <span class="text-[11px] text-outline font-mono">Especialista de Atención</span>
+                                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span class="text-[10px] text-primary font-mono bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                                        Área TICS
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif($incident->assignedTo)
                         <div class="flex items-center gap-3 bg-surface-container-low p-3.5 rounded-xl border border-border-subtle">
                             <div class="w-10 h-10 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center font-mono font-bold text-primary text-sm">
                                 {{ substr($incident->assignedTo->name, 0, 2) }}
@@ -557,17 +593,6 @@
                                 <span class="font-semibold text-xs text-on-surface truncate">{{ $incident->assignedTo->name }}</span>
                                 <span class="text-[11px] text-outline font-mono">{{ $incident->assignedTo->email }}</span>
                                 <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                    @if($incident->assignedTo->isShiftActive())
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                                            <span>🟢</span>
-                                            <span>Activo / Disponible</span>
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-700/40 text-slate-300 border border-slate-600">
-                                            <span>⚪</span>
-                                            <span>No disponible</span>
-                                        </span>
-                                    @endif
                                     <span class="text-[10px] text-outline font-mono">
                                         {{ $incident->assignedTo->role?->name ?? 'GTS' }}
                                     </span>
@@ -603,7 +628,28 @@
                         </div>
                         <div class="flex justify-between py-1.5 border-b border-border-subtle/50">
                             <dt class="text-outline">Reportado Por:</dt>
-                            <dd class="text-on-surface font-semibold">{{ $incident->reportedBy->name }} (APOC)</dd>
+                            <dd class="text-on-surface font-semibold flex items-center gap-1.5">
+                                <span>{{ $incident->reportedBy?->name ?? 'Sistema' }}</span>
+                                @if($incident->isFromCco())
+                                    <span class="px-1.5 py-0.2 rounded font-mono text-[9.5px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">CCO</span>
+                                @elseif($incident->isFromCsa())
+                                    <span class="px-1.5 py-0.2 rounded font-mono text-[9.5px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20">CSA</span>
+                                @elseif($incident->origin_group)
+                                    <span class="px-1.5 py-0.2 rounded font-mono text-[9.5px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/20">{{ $incident->origin_group }}</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div class="flex justify-between py-1.5 border-b border-border-subtle/50">
+                            <dt class="text-outline">Procedencia:</dt>
+                            <dd class="text-on-surface font-semibold font-mono text-xs">
+                                @if($incident->isFromCco())
+                                    <span class="text-amber-400 font-bold">APOC-CCO</span>
+                                @elseif($incident->isFromCsa())
+                                    <span class="text-orange-400 font-bold">APOC-CSA</span>
+                                @else
+                                    <span>{{ $incident->origin_group ?? 'GTS' }}</span>
+                                @endif
+                            </dd>
                         </div>
                         <div class="flex justify-between py-1.5 border-b border-border-subtle/50">
                             <dt class="text-outline">Fecha Reporte:</dt>
@@ -627,9 +673,9 @@
                                 <dd class="text-primary font-mono font-semibold">{{ $incident->closed_at->format('Y-m-d H:i:s') }}</dd>
                             </div>
                         @endif
-                        <div class="flex justify-between py-1.5">
-                            <dt class="text-outline">SLA Estimado:</dt>
-                            <dd class="text-primary font-mono font-semibold">{{ $incident->priority->sla_minutes }} minutos</dd>
+                        <div class="flex items-center justify-between gap-2 py-1.5">
+                            <dt class="text-outline">Tiempo de respuesta estimado:</dt>
+                            <dd class="text-primary font-mono font-semibold shrink-0">{{ $incident->priority->sla_minutes }} minutos</dd>
                         </div>
                     </dl>
                 </div>
@@ -638,33 +684,15 @@
 
         </div>
 
-        <!-- 4. Modal de Asignación / Reasignación de Especialista (Paso 9) -->
+        <!-- 4. Modal de Asignación / Reasignación de Especialista -->
         @php
-            $activeTechs = $gtsUsers->filter(fn($u) => $u->isShiftActive());
-            $unavailableTechs = $gtsUsers->filter(fn($u) => $u->isShiftUnavailable());
-            $initialSelectedId = ($incident->assignedTo && $incident->assignedTo->isShiftActive()) ? (string)$incident->assigned_to_user_id : '';
+            $initialSelectedId = $incident->isAssignedToTics() ? 'tics' : ($incident->assigned_to_user_id ? (string)$incident->assigned_to_user_id : '');
         @endphp
         <div
             x-show="showAssignModal"
             x-cloak
             x-data="{
-                selectedTechId: '{{ $initialSelectedId }}',
-                techs: {{ $gtsUsers->mapWithKeys(fn($u) => [$u->id => [
-                    'id' => $u->id,
-                    'name' => $u->name,
-                    'badge_number' => $u->badge_number ?? 'GTS',
-                    'role' => $u->role?->name ?? 'Especialista GTS',
-                    'shift_status' => $u->shift_status ?? 'ACTIVO',
-                    'is_active' => $u->isShiftActive(),
-                    'updated_at' => $u->shift_status_updated_at ? $u->shift_status_updated_at->format('d/m/Y H:i') : 'Sin registro',
-                    'updated_at_diff' => $u->shift_status_updated_at ? $u->shift_status_updated_at->diffForHumans() : 'N/D',
-                ]])->toJson() }},
-                get selectedTech() {
-                    return this.techs[this.selectedTechId] || null;
-                },
-                get isUnavailable() {
-                    return this.selectedTech && this.selectedTech.shift_status === 'NO DISPONIBLE';
-                }
+                selectedTechId: '{{ $initialSelectedId }}'
             }"
             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-base/80 backdrop-blur-sm"
             @keydown.escape.window="showAssignModal = false"
@@ -677,7 +705,7 @@
                     <div class="flex items-center gap-2">
                         <span class="material-symbols-outlined text-primary text-[22px]">sync_alt</span>
                         <h3 class="text-base font-bold text-on-surface">
-                            {{ $incident->assignedTo ? 'Reasignar Especialista GTS' : 'Asignar Especialista GTS' }}
+                            {{ ($incident->assignedTo || $incident->isAssignedToTics()) ? 'Reasignar Especialista' : 'Asignar Especialista' }}
                         </h3>
                     </div>
                     <button
@@ -692,12 +720,12 @@
                 <form method="POST" action="{{ route('incidents.assign', $incident) }}" class="flex flex-col gap-4">
                     @csrf
 
-                    <!-- Selector de Técnico -->
+                    <!-- Selector de Especialista / Área -->
                     <div class="flex flex-col gap-1.5">
                         <label for="modal_assigned_to_user_id" class="text-xs font-semibold text-on-surface flex items-center justify-between">
-                            <span>Seleccionar Especialista Técnico GTS <span class="text-status-critical">*</span></span>
+                            <span>Seleccionar Especialista de Atención <span class="text-status-critical">*</span></span>
                             <span class="text-[11px] text-outline font-normal">
-                                Disponibles: <strong class="text-emerald-400">{{ $activeTechs->count() }}</strong> | No disponibles: <strong class="text-outline">{{ $unavailableTechs->count() }}</strong>
+                                Especialistas disponibles: <strong class="text-primary">{{ $gtsUsers->count() + 1 }}</strong>
                             </span>
                         </label>
                         <div class="relative">
@@ -709,104 +737,21 @@
                                 class="w-full appearance-none px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-9 cursor-pointer shadow-inner"
                             >
                                 <option value="" disabled :selected="!selectedTechId">
-                                    -- Seleccionar especialista técnico GTS --
+                                    -- Seleccionar especialista o área responsable --
                                 </option>
-
-                                @if($activeTechs->isNotEmpty())
-                                    <optgroup label="🟢 Especialistas Activos / Disponibles ({{ $activeTechs->count() }})">
-                                        @foreach($activeTechs as $tech)
-                                            <option value="{{ $tech->id }}">
-                                                🟢 {{ $tech->name }} ({{ $tech->badge_number ?? 'GTS' }}) — Disponible
-                                            </option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
-
-                                @if($unavailableTechs->isNotEmpty())
-                                    <optgroup label="⚪ Especialistas No Disponibles ({{ $unavailableTechs->count() }})">
-                                        @foreach($unavailableTechs as $tech)
-                                            <option value="{{ $tech->id }}">
-                                                ⚪ {{ $tech->name }} ({{ $tech->badge_number ?? 'GTS' }}) — No disponible
-                                            </option>
-                                        @endforeach
-                                    </optgroup>
-                                @endif
+                                <option value="tics">
+                                    TICS — Área de Tecnologías de Información y Comunicaciones
+                                </option>
+                                @foreach($gtsUsers as $tech)
+                                    <option value="{{ $tech->id }}">
+                                        {{ $tech->name }} ({{ $tech->badge_number ?? 'GTS' }}) — {{ $tech->role?->name ?? 'GTS' }}
+                                    </option>
+                                @endforeach
                             </select>
                             <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
                                 expand_more
                             </span>
                         </div>
-                    </div>
-
-                    <!-- Ficha Detallada de Disponibilidad del Especialista Seleccionado -->
-                    <div x-show="selectedTech" class="flex flex-col gap-2">
-                        <div 
-                            class="p-3.5 rounded-xl border transition-all flex flex-col gap-2.5"
-                            :class="isUnavailable 
-                                ? 'bg-amber-950/20 border-amber-500/30' 
-                                : 'bg-surface-container-low border-border-subtle'"
-                        >
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="flex items-center gap-2.5 min-w-0">
-                                    <div 
-                                        class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0"
-                                        :class="isUnavailable 
-                                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' 
-                                            : 'bg-primary/15 text-primary border border-primary/30'"
-                                    >
-                                        <span class="material-symbols-outlined text-[20px]" x-text="isUnavailable ? 'person_off' : 'engineering'"></span>
-                                    </div>
-                                    <div class="flex flex-col min-w-0">
-                                        <span class="text-xs font-bold text-on-surface truncate" x-text="selectedTech.name + ' (' + selectedTech.badge_number + ')'"></span>
-                                        <span class="text-[11px] text-outline truncate" x-text="'Rol: ' + selectedTech.role"></span>
-                                    </div>
-                                </div>
-
-                                <!-- Badge de Estado de Turno -->
-                                <span 
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-wide shrink-0"
-                                    :class="isUnavailable 
-                                        ? 'bg-slate-700/50 text-slate-300 border border-slate-600' 
-                                        : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'"
-                                >
-                                    <span x-text="isUnavailable ? '⚪' : '🟢'"></span>
-                                    <span x-text="isUnavailable ? 'No disponible' : 'Activo'"></span>
-                                </span>
-                            </div>
-
-                            <div class="flex items-center justify-between pt-2 border-t border-border-subtle/50 text-[11px]">
-                                <span class="text-outline">Última actualización de turno:</span>
-                                <span class="font-mono text-on-surface-variant" x-text="selectedTech.updated_at + ' (' + selectedTech.updated_at_diff + ')'"></span>
-                            </div>
-                        </div>
-
-                        <!-- Advertencia Operacional en Tiempo Real (Agente No Disponible) -->
-                        <div x-show="isUnavailable" class="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 flex items-start gap-3 shadow-md animate-in fade-in duration-200">
-                            <span class="material-symbols-outlined text-[22px] text-amber-400 shrink-0 mt-0.5">warning</span>
-                            <div class="flex flex-col gap-1 text-xs">
-                                <span class="font-bold text-amber-300 flex items-center gap-1.5">
-                                    Advertencia de Asignación Operacional
-                                </span>
-                                <p class="text-amber-200 leading-relaxed font-medium">
-                                    El agente seleccionado no está marcado como disponible (estado actual: <strong>NO DISPONIBLE</strong>).
-                                </p>
-                                <p class="text-[11px] text-amber-300/80 leading-normal">
-                                    Como usuario autorizado puede proceder con la asignación si existe una justificación operativa o requerimiento de guardia.
-                                </p>
-                            </div>
-                        </div>
-
-                        <!-- Confirmación de Disponibilidad (Agente Activo) -->
-                        <div x-show="!isUnavailable" class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 flex items-center gap-2 text-xs">
-                            <span class="material-symbols-outlined text-[18px] text-emerald-400">check_circle</span>
-                            <span>Especialista activo en turno y disponible para atención inmediata.</span>
-                        </div>
-                    </div>
-
-                    <!-- Mensaje Neutral cuando no hay técnico seleccionado -->
-                    <div x-show="!selectedTech" class="p-2.5 rounded-xl bg-surface-container-low border border-border-subtle/60 text-outline flex items-center gap-2 text-xs">
-                        <span class="material-symbols-outlined text-[18px]">info</span>
-                        <span>Seleccione un especialista para consultar su estado de turno y disponibilidad operacional.</span>
                     </div>
 
                     <!-- Comentario u Observación -->
@@ -834,13 +779,10 @@
                         </button>
                         <button
                             type="submit"
-                            class="px-4 py-2 font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-                            :class="isUnavailable 
-                                ? 'bg-amber-600 hover:bg-amber-700 text-white' 
-                                : 'bg-primary hover:bg-primary/90 text-on-primary'"
+                            class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
                         >
-                            <span class="material-symbols-outlined text-[16px]" x-text="isUnavailable ? 'assignment_late' : 'how_to_reg'"></span>
-                            <span x-text="isUnavailable ? 'Proceder con Asignación (No Disponible)' : 'Confirmar Asignación'"></span>
+                            <span class="material-symbols-outlined text-[16px]">how_to_reg</span>
+                            <span>Confirmar Asignación</span>
                         </button>
                     </div>
                 </form>
@@ -999,7 +941,7 @@
             </div>
         </div>
 
-        <!-- 7. Modal de Visto Bueno y Cierre Definitivo por APOC (Paso 25) -->
+        <!-- 7. Modal de Visto Bueno y Cierre Definitivo (Paso 25) -->
         <div
             x-show="showCloseModal"
             x-cloak
@@ -1035,8 +977,8 @@
                             <span class="font-mono font-bold text-primary text-sm">{{ $incident->folio }}</span>
                         </div>
                         <div class="flex items-center justify-between">
-                            <span class="text-outline">Especialista GTS:</span>
-                            <span class="font-semibold text-on-surface">{{ $incident->assignedTo?->name ?? 'GTS de Guardia' }}</span>
+                            <span class="text-outline">Especialista:</span>
+                            <span class="font-semibold text-on-surface">{{ $incident->isAssignedToTics() ? 'TICS' : ($incident->assignedTo?->name ?? 'GTS de Guardia') }}</span>
                         </div>
                         <div class="flex items-center justify-between">
                             <span class="text-outline">Subsistema:</span>
@@ -1061,7 +1003,7 @@
                             name="comment"
                             rows="3"
                             maxlength="1000"
-                            placeholder="Detalles de la validación: servicio verificado en sala/pista, pruebas de pasajeros exitosas, visto bueno otorgado por APOC..."
+                            placeholder="Detalles de la validación: servicio verificado en sala/pista, pruebas de pasajeros exitosas, visto bueno otorgado..."
                             class="w-full px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-primary/50 transition-colors shadow-inner resize-none"
                         ></textarea>
                     </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Mail\IncidentReportMail;
 use App\Models\Category;
+use App\Models\Incident;
 use App\Models\Priority;
 use App\Models\Status;
 use App\Models\User;
@@ -29,7 +30,7 @@ class ReportController extends Controller
      */
     public function index(Request $request): View
     {
-        abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
 
         $filters = $request->only([
             'report_type',
@@ -42,9 +43,28 @@ class ReportController extends Controller
             'assigned_to',
             'reported_by',
             'search',
+            'folio',
         ]);
 
-        $query = $this->reportService->buildQuery($filters);
+        // Validación y diagnóstico de búsqueda puntual por folio (Sección 5.10)
+        $search = trim($request->input('search', ''));
+        $folioInput = trim($request->input('folio', ''));
+        $termToValidate = ! empty($folioInput) ? $folioInput : $search;
+        $searchWarning = null;
+
+        if (! empty($termToValidate) && preg_match('/^INC/i', $termToValidate)) {
+            $isValidFolioFormat = (bool) preg_match('/^INC-\d{4}-\d{3,6}$/i', $termToValidate);
+            if (! $isValidFolioFormat) {
+                $searchWarning = 'No se encontró una incidencia válida con ese folio.';
+            } else {
+                $folioExists = Incident::where('folio', strtoupper($termToValidate))->exists();
+                if (! $folioExists) {
+                    $searchWarning = 'No se encontró ninguna incidencia con ese folio.';
+                }
+            }
+        }
+
+        $query = $this->reportService->buildQuery($filters, null, $request->user());
         $summary = $this->reportService->calculateSummary($query);
         $incidents = (clone $query)->paginate(15)->withQueryString();
         $appliedFilters = $this->reportService->getFilterLabels($filters);
@@ -53,17 +73,45 @@ class ReportController extends Controller
         $categories = Category::where('is_active', true)->orderBy('name')->get();
         $priorities = Priority::where('is_active', true)->orderBy('level')->get();
         $statuses = Status::orderBy('step_order')->get();
-        $gtsUsers = User::whereHas('role', fn($q) => $q->where('slug', 'gts'))
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-        $apocUsers = User::whereHas('role', fn($q) => $q->where('slug', 'apoc'))
+        $gtsUsers = User::whereHas('role', fn ($q) => $q->where('slug', 'gts'))
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
+        $apocUsersQuery = User::whereHas('role', fn ($q) => $q->whereIn('slug', ['apoc', 'apoc-cco', 'apoc-csa']))
+            ->where('is_active', true)
+            ->orderBy('name');
+
+        $like = User::query()->getConnection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+
+        if ($request->user()->isApocCco()) {
+            $apocUsers = User::where(function ($q) use ($like) {
+                $q->whereHas('role', fn ($rq) => $rq->where('slug', 'apoc-cco'))
+                    ->orWhere(function ($legacy) use ($like) {
+                        $legacy->whereHas('role', fn ($rq) => $rq->where('slug', 'apoc'))
+                            ->where(function ($match) use ($like) {
+                                $match->where('username', $like, '%cco%')
+                                    ->orWhere('badge_number', $like, '%CCO%');
+                            });
+                    });
+            })->where('is_active', true)->orderBy('name')->get();
+        } elseif ($request->user()->isApocCsa()) {
+            $apocUsers = User::where(function ($q) use ($like) {
+                $q->whereHas('role', fn ($rq) => $rq->where('slug', 'apoc-csa'))
+                    ->orWhere(function ($legacy) use ($like) {
+                        $legacy->whereHas('role', fn ($rq) => $rq->where('slug', 'apoc'))
+                            ->where(function ($match) use ($like) {
+                                $match->where('username', $like, '%csa%')
+                                    ->orWhere('badge_number', $like, '%CSA%');
+                            });
+                    });
+            })->where('is_active', true)->orderBy('name')->get();
+        } else {
+            $apocUsers = $apocUsersQuery->get();
+        }
+
         // Generar vista previa de mensaje WhatsApp
-        $reportFolioPreview = 'PREV-' . date('Ymd');
+        $reportFolioPreview = 'PREV-'.date('Ymd');
         $whatsAppPreviewText = $this->whatsAppService->formatReportMessage(
             $summary,
             $filters,
@@ -82,15 +130,17 @@ class ReportController extends Controller
             'gtsUsers' => $gtsUsers,
             'apocUsers' => $apocUsers,
             'whatsAppPreviewText' => $whatsAppPreviewText,
+            'searchWarning' => $searchWarning,
         ]);
     }
 
     /**
-     * Genera y descarga el informe oficial en formato PDF institucional con los mismos filtros aplicados.
+     * Genera y descarga el informe oficial en formato PDF institucional.
+     * Permite exportar sobre filtros o sobre una selección explícita de incidencias (1 ficha por página).
      */
-    public function exportPdf(Request $request): Response
+    public function exportPdf(Request $request): Response|RedirectResponse
     {
-        abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
 
         $filters = $request->only([
             'report_type',
@@ -103,10 +153,45 @@ class ReportController extends Controller
             'assigned_to',
             'reported_by',
             'search',
+            'folio',
         ]);
 
+        $rawSelected = $request->input('selected_ids');
+        $selectedIds = null;
+
+        if ($request->has('selected_ids')) {
+            if (is_string($rawSelected)) {
+                $rawSelected = array_filter(explode(',', $rawSelected));
+            }
+            if (empty($rawSelected) || ! is_array($rawSelected)) {
+                return back()->with('search_warning', 'Debe seleccionar al menos una incidencia para generar el reporte.');
+            }
+
+            // Validar que las incidencias existan físicamente en PostgreSQL y correspondan a folios/IDs válidos
+            $validatedQuery = Incident::where(function ($q) use ($rawSelected) {
+                $numericIds = array_values(array_filter($rawSelected, 'is_numeric'));
+                $stringFolios = array_values(array_filter($rawSelected, fn ($x) => ! is_numeric($x)));
+                if (! empty($numericIds)) {
+                    $q->whereIn('id', $numericIds);
+                }
+                if (! empty($stringFolios)) {
+                    $q->orWhereIn('folio', $stringFolios);
+                }
+            });
+
+            $validatedQuery->forUserScope($request->user());
+
+            $validatedIncidents = $validatedQuery->pluck('id')->toArray();
+
+            if (empty($validatedIncidents)) {
+                return back()->with('search_warning', 'No se encontraron incidencias válidas para los identificadores seleccionados.');
+            }
+
+            $selectedIds = $validatedIncidents;
+        }
+
         $reportFolio = $this->reportService->generateReportFolio();
-        $pdf = $this->reportService->generatePdf($filters, $request->user(), $reportFolio);
+        $pdf = $this->reportService->generatePdf($filters, $request->user(), $reportFolio, $selectedIds);
 
         return $pdf->download("Reporte_GTS_{$reportFolio}.pdf");
     }
@@ -116,22 +201,28 @@ class ReportController extends Controller
      */
     public function sendEmail(Request $request): RedirectResponse
     {
-        abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
 
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:255'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'filters' => ['nullable', 'array'],
+            'selected_ids' => ['nullable'],
         ]);
 
         $filters = $validated['filters'] ?? [];
+        $selectedIds = $this->resolveSelectedIds($validated['selected_ids'] ?? null, $request->user());
+
         $reportFolio = $this->reportService->generateReportFolio();
-        $pdf = $this->reportService->generatePdf($filters, $request->user(), $reportFolio);
+        $pdf = $this->reportService->generatePdf($filters, $request->user(), $reportFolio, $selectedIds);
         $pdfBinary = $pdf->output();
 
-        $query = $this->reportService->buildQuery($filters);
+        $query = $this->reportService->buildQuery($filters, $selectedIds, $request->user());
         $summary = $this->reportService->calculateSummary($query);
         $appliedFilters = $this->reportService->getFilterLabels($filters);
+        if (! empty($selectedIds)) {
+            $appliedFilters['Selección'] = count($selectedIds).' incidencias específicas';
+        }
 
         Mail::to($validated['email'])->send(new IncidentReportMail(
             summary: $summary,
@@ -150,24 +241,40 @@ class ReportController extends Controller
      */
     public function shareWhatsApp(Request $request): JsonResponse|RedirectResponse
     {
-        abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
 
         $validated = $request->validate([
             'phone' => ['required', 'string', 'min:10', 'max:25'],
             'filters' => ['nullable', 'array'],
+            'selected_ids' => ['nullable'],
         ]);
 
         $filters = $validated['filters'] ?? [];
-        $query = $this->reportService->buildQuery($filters);
+        $selectedIds = $this->resolveSelectedIds($validated['selected_ids'] ?? null, $request->user());
+
+        $query = $this->reportService->buildQuery($filters, $selectedIds, $request->user());
         $summary = $this->reportService->calculateSummary($query);
         $reportFolio = $this->reportService->generateReportFolio();
 
-        $reportUrl = route('reports.index', $filters);
+        $selectedFolios = null;
+        if (! empty($selectedIds)) {
+            $foliosQuery = Incident::whereIn('id', $selectedIds);
+            $foliosQuery->forUserScope($request->user());
+            $selectedFolios = $foliosQuery->pluck('folio')->toArray();
+        }
+
+        $reportUrlParams = $filters;
+        if (! empty($selectedIds)) {
+            $reportUrlParams['selected_ids'] = $selectedIds;
+        }
+        $reportUrl = route('reports.index', $reportUrlParams);
+
         $message = $this->whatsAppService->formatReportMessage(
             $summary,
             $filters,
             $reportFolio,
-            $reportUrl
+            $reportUrl,
+            $selectedFolios
         );
 
         $result = $this->whatsAppService->sendOrGenerate($validated['phone'], $message);
@@ -176,11 +283,48 @@ class ReportController extends Controller
             return response()->json($result);
         }
 
-        if ($result['success'] && !empty($result['url'])) {
+        if ($result['success'] && ! empty($result['url'])) {
             return redirect()->away($result['url']);
         }
 
         return back()->with('status_message', $result['message']);
     }
-}
 
+    /**
+     * Resuelve y valida en backend los identificadores seleccionados de incidencias.
+     *
+     * @return array<int>|null
+     */
+    protected function resolveSelectedIds(mixed $rawSelected, ?User $user = null): ?array
+    {
+        if (empty($rawSelected)) {
+            return null;
+        }
+
+        if (is_string($rawSelected)) {
+            $rawSelected = array_filter(explode(',', $rawSelected));
+        }
+
+        if (! is_array($rawSelected)) {
+            return null;
+        }
+
+        $numericIds = array_values(array_filter($rawSelected, 'is_numeric'));
+        $stringFolios = array_values(array_filter($rawSelected, fn ($x) => ! is_numeric($x)));
+
+        $query = Incident::where(function ($q) use ($numericIds, $stringFolios) {
+            if (! empty($numericIds)) {
+                $q->whereIn('id', $numericIds);
+            }
+            if (! empty($stringFolios)) {
+                $q->orWhereIn('folio', $stringFolios);
+            }
+        });
+
+        $query->forUserScope($user);
+
+        $valid = $query->pluck('id')->toArray();
+
+        return ! empty($valid) ? $valid : null;
+    }
+}

@@ -13,19 +13,48 @@
         @csrf
     </form>
 
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
+    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6" autocomplete="off">
         @csrf
         @method('patch')
 
         <div>
             <x-input-label for="name" :value="__('Name')" />
-            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
+            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="off" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
 
+        @if($user->isAdmin())
+            <div>
+                <x-input-label for="username" :value="__('Usuario (Login)')" />
+                <x-text-input id="username" name="username" type="text" class="mt-1 block w-full" :value="old('username', $user->username)" required autocomplete="off" />
+                <x-input-error class="mt-2" :messages="$errors->get('username')" />
+            </div>
+        @else
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <x-input-label for="username" :value="__('Usuario (Login)')" />
+                    <span class="text-[10px] font-mono text-[#707B8A] bg-[#11151B] px-2 py-0.5 rounded border border-[#263241] flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[13px] text-amber-400">lock</span>
+                        <span>No editable</span>
+                    </span>
+                </div>
+                <x-text-input 
+                    id="username" 
+                    type="text" 
+                    class="mt-1 block w-full bg-[#070A0F] text-[#8D98A8] border-[#1F2937] cursor-not-allowed opacity-80 select-none font-mono" 
+                    :value="$user->username" 
+                    readonly 
+                    disabled 
+                />
+                <p class="mt-1 text-[11px] text-[#707B8A]">
+                    El nombre de usuario institucional es permanente y únicamente puede ser gestionado por la Administración del Sistema.
+                </p>
+            </div>
+        @endif
+
         <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
+            <x-input-label for="email" :value="__('Correo Electrónico (Opcional)')" />
+            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" autocomplete="off" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
             @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())

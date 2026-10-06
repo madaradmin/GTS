@@ -72,8 +72,8 @@ class IncidentHistory extends Model
         $likeOperator = $query->getConnection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
 
         // 1. Búsqueda por término (comentario, valores anterior/nuevo, campo o folio)
-        if (!empty($filters['search'])) {
-            $search = '%' . trim($filters['search']) . '%';
+        if (! empty($filters['search'])) {
+            $search = '%'.trim($filters['search']).'%';
             $query->where(function (Builder $q) use ($search, $likeOperator) {
                 $q->where('comment', $likeOperator, $search)
                     ->orWhere('field_name', $likeOperator, $search)
@@ -81,41 +81,41 @@ class IncidentHistory extends Model
                     ->orWhere('new_value', $likeOperator, $search)
                     ->orWhereHas('incident', function (Builder $iq) use ($search, $likeOperator) {
                         $iq->where('folio', $likeOperator, $search)
-                           ->orWhere('title', $likeOperator, $search);
+                            ->orWhere('title', $likeOperator, $search);
                     });
             });
         }
 
         // 2. Filtro por tipo de acción
-        if (!empty($filters['action'])) {
+        if (! empty($filters['action'])) {
             $query->where('action', $filters['action']);
         }
 
         // 3. Filtro por usuario responsable
-        if (!empty($filters['user_id'])) {
+        if (! empty($filters['user_id'])) {
             $query->where('user_id', $filters['user_id']);
         }
 
         // 4. Filtro por incidencia específica (por ID)
-        if (!empty($filters['incident_id'])) {
+        if (! empty($filters['incident_id'])) {
             $query->where('incident_id', $filters['incident_id']);
         }
 
         // 5. Filtro por folio de incidencia
-        if (!empty($filters['folio'])) {
+        if (! empty($filters['folio'])) {
             $query->whereHas('incident', function (Builder $iq) use ($filters) {
                 $iq->where('folio', trim($filters['folio']));
             });
         }
 
         // 6. Filtro por rango de fechas (Desde)
-        if (!empty($filters['date_from'])) {
-            $query->where('created_at', '>=', $filters['date_from'] . ' 00:00:00');
+        if (! empty($filters['date_from'])) {
+            $query->where('created_at', '>=', $filters['date_from'].' 00:00:00');
         }
 
         // 7. Filtro por rango de fechas (Hasta)
-        if (!empty($filters['date_to'])) {
-            $query->where('created_at', '<=', $filters['date_to'] . ' 23:59:59');
+        if (! empty($filters['date_to'])) {
+            $query->where('created_at', '<=', $filters['date_to'].' 23:59:59');
         }
 
         return $query;

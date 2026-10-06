@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Incident;
-use App\Models\IncidentHistory;
-use App\Models\Status;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -30,18 +28,31 @@ class CloseIncidentTest extends TestCase
         $response->assertRedirect('/login');
     }
 
-    public function test_gts_user_cannot_close_incident(): void
+    public function test_gts_user_can_give_vobo_and_close_incident(): void
     {
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
         $incident = Incident::factory()->resuelta()->create();
 
-        // El personal técnico de GTS no puede otorgarse el visto bueno a sí mismo (RN-02)
+        $this->assertNull($incident->closed_at);
+
         $response = $this->actingAs($gtsUser)
             ->post("/incidencias/{$incident->folio}/cerrar", [
-                'comment' => 'Intento indebido de auto-cierre por técnico de GTS.',
+                'comment' => 'Visto bueno técnico y conformidad otorgado por GTS.',
             ]);
 
-        $response->assertForbidden();
+        $response->assertRedirect("/incidencias/{$incident->folio}");
+        $response->assertSessionHas('success');
+
+        $incident->refresh();
+        $this->assertEquals('CERRADA', $incident->status->code);
+        $this->assertNotNull($incident->closed_at);
+
+        $this->assertDatabaseHas('incident_histories', [
+            'incident_id' => $incident->id,
+            'user_id' => $gtsUser->id,
+            'action' => 'CAMBIO_ESTADO',
+            'new_value' => 'Cerrada',
+        ]);
     }
 
     public function test_apoc_user_can_close_incident_with_comment(): void
@@ -217,4 +228,3 @@ class CloseIncidentTest extends TestCase
         $this->assertNull($incident->closed_at);
     }
 }
-

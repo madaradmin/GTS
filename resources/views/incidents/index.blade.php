@@ -10,7 +10,9 @@
                     <span class="text-xs uppercase tracking-widest text-on-surface-variant font-medium">Control APOC & GTS</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <h1 class="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">Todas las Incidencias</h1>
+                    <h1 class="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight">
+                        {{ (request()->has('assigned_to') || request()->has('reported_by') || request()->routeIs('incidents.my')) ? 'Mis Incidencias' : 'Todas las Incidencias' }}
+                    </h1>
                     <span class="px-2.5 py-0.5 rounded bg-surface-container-high text-primary font-mono text-xs font-semibold uppercase tracking-wider border border-border-subtle">
                         AIFA-GTS
                     </span>
@@ -87,10 +89,10 @@
         </div>
 
         <!-- Barra de Búsqueda y Filtros Multidimensionales -->
-        <form method="GET" action="{{ route('incidents.index') }}" class="bg-surface-subtle border border-border-subtle p-4 rounded-xl shadow-sm flex flex-col gap-4">
+        <form method="GET" action="{{ request()->routeIs('incidents.my') ? route('incidents.my') : route('incidents.index') }}" class="bg-surface-subtle border border-border-subtle p-4 rounded-xl shadow-sm flex flex-col gap-4" autocomplete="off">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-center">
                 <!-- Búsqueda por Texto -->
-                <div class="relative lg:col-span-4">
+                <div class="relative lg:col-span-4 min-w-0">
                     <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
                         search
                     </span>
@@ -99,12 +101,13 @@
                         name="search"
                         value="{{ request('search') }}"
                         placeholder="Buscar por folio, asunto o ubicación..."
+                        autocomplete="off"
                         class="w-full pl-9 pr-3 py-2 bg-surface-container-low border border-border-subtle rounded-lg text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-border-focus transition-colors shadow-inner"
                     />
                 </div>
 
                 <!-- Filtro de Estado -->
-                <div class="relative lg:col-span-2">
+                <div class="relative lg:col-span-2 min-w-0">
                     <select
                         name="status_id"
                         class="w-full appearance-none px-3 py-2 bg-surface-container-low border border-border-subtle rounded-lg text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-8 cursor-pointer shadow-inner"
@@ -122,7 +125,7 @@
                 </div>
 
                 <!-- Filtro de Prioridad -->
-                <div class="relative lg:col-span-2">
+                <div class="relative lg:col-span-2 min-w-0">
                     <select
                         name="priority_id"
                         class="w-full appearance-none px-3 py-2 bg-surface-container-low border border-border-subtle rounded-lg text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-8 cursor-pointer shadow-inner"
@@ -140,7 +143,7 @@
                 </div>
 
                 <!-- Filtro de Categoría / Subsistema -->
-                <div class="relative lg:col-span-2">
+                <div class="relative lg:col-span-2 min-w-0">
                     <select
                         name="category_id"
                         class="w-full appearance-none px-3 py-2 bg-surface-container-low border border-border-subtle rounded-lg text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-8 cursor-pointer shadow-inner"
@@ -158,7 +161,7 @@
                 </div>
 
                 <!-- Botones de Acción de Filtro -->
-                <div class="flex items-center gap-2 lg:col-span-2">
+                <div class="flex items-center gap-2 lg:col-span-2 min-w-0">
                     <button
                         type="submit"
                         class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-surface-container text-primary text-xs font-semibold rounded-lg border border-border-subtle transition-colors shadow-sm"
@@ -168,7 +171,7 @@
                     </button>
                     @if(request()->hasAny(['search', 'status_id', 'priority_id', 'category_id']))
                         <a
-                            href="{{ route('incidents.index') }}"
+                            href="{{ request()->routeIs('incidents.my') ? route('incidents.my') : route('incidents.index') }}"
                             class="text-xs text-outline hover:text-on-surface px-2.5 py-2 transition-colors whitespace-nowrap"
                         >
                             Limpiar
@@ -180,105 +183,132 @@
 
         <!-- Tabla Principal de Incidencias -->
         <div class="bg-surface-subtle border border-border-subtle rounded-xl overflow-hidden shadow-lg flex flex-col">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
+            <div class="w-full">
+                <table class="w-full max-w-full text-left border-collapse table-fixed">
                     <thead>
                         <tr class="bg-surface-container-low border-b border-border-subtle text-outline uppercase font-mono text-[11px] tracking-wider">
-                            <th class="py-3 px-4 font-semibold">Folio</th>
-                            <th class="py-3 px-4 font-semibold">Título / Asunto</th>
-                            <th class="py-3 px-4 font-semibold">Área / Ubicación</th>
-                            <th class="py-3 px-4 font-semibold">Prioridad</th>
-                            <th class="py-3 px-4 font-semibold">Estado</th>
-                            <th class="py-3 px-4 font-semibold">Responsable</th>
-                            <th class="py-3 px-4 font-semibold">Fecha / Hora</th>
-                            <th class="py-3 px-4 text-right font-semibold">Acciones</th>
+                            <th class="w-[13%] py-2.5 px-2 font-semibold">Folio</th>
+                            <th class="w-[26%] py-2.5 px-2 font-semibold">Título / Asunto</th>
+                            <th class="w-[17%] py-2.5 px-2 font-semibold">Área / Ubicación</th>
+                            <th class="w-[9%] py-2.5 px-2 font-semibold text-center">Prioridad</th>
+                            <th class="w-[10%] py-2.5 px-2 font-semibold text-center">Estado</th>
+                            <th class="w-[11%] py-2.5 px-2 font-semibold">Responsable</th>
+                            <th class="w-[7%] py-2.5 px-2 font-semibold text-center">Fecha</th>
+                            <th class="w-[7%] py-2.5 px-2 text-right font-semibold">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-border-subtle text-xs" id="incidentsTableBody">
                         @forelse ($incidents as $incident)
                             <tr class="hover:bg-surface-container-low/60 transition-colors group">
-                                <!-- Folio -->
-                                <td class="py-3.5 px-4 whitespace-nowrap">
-                                    <span class="font-mono text-primary font-semibold tracking-wide text-xs">
-                                        {{ $incident->folio }}
-                                    </span>
+                                <!-- Folio (100% visible, sin truncar) -->
+                                <td class="py-2.5 px-2 whitespace-nowrap">
+                                    <div class="flex flex-col">
+                                        <span class="font-mono text-[#3D82C6] font-bold tracking-tight text-xs select-all">
+                                            {{ $incident->folio }}
+                                        </span>
+                                        @if(auth()->user()->isAdmin() || auth()->user()->isGts())
+                                            @if($incident->isFromCco())
+                                                <span class="inline-flex items-center gap-0.5 mt-0.5 w-fit px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Procedencia: APOC-CCO">
+                                                    CCO
+                                                </span>
+                                            @elseif($incident->isFromCsa())
+                                                <span class="inline-flex items-center gap-0.5 mt-0.5 w-fit px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20" title="Procedencia: APOC-CSA">
+                                                    CSA
+                                                </span>
+                                            @elseif($incident->origin_group)
+                                                <span class="inline-flex items-center gap-0.5 mt-0.5 w-fit px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20">
+                                                    {{ $incident->origin_group }}
+                                                </span>
+                                            @endif
+                                        @endif
+                                    </div>
                                 </td>
 
                                 <!-- Título y Categoría -->
-                                <td class="py-3.5 px-4 min-w-[240px]">
-                                    <div class="font-semibold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
+                                <td class="py-2.5 px-2">
+                                    <div class="font-medium text-on-surface group-hover:text-primary transition-colors truncate" title="{{ $incident->title }}">
                                         {{ $incident->title }}
                                     </div>
-                                    <div class="flex items-center gap-1.5 mt-0.5">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-primary/80"></span>
-                                        <span class="text-[11px] text-on-surface-variant font-medium">
+                                    <div class="flex items-center gap-1.5 mt-0.5 truncate">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-primary/80 shrink-0"></span>
+                                        <span class="text-[10px] text-on-surface-variant font-normal truncate" title="{{ $incident->category->name }}">
                                             {{ $incident->category->name }}
                                         </span>
                                     </div>
                                 </td>
 
                                 <!-- Ubicación -->
-                                <td class="py-3.5 px-4 min-w-[180px]">
-                                    <span class="text-on-surface font-medium block truncate">
+                                <td class="py-2.5 px-2">
+                                    <span class="text-on-surface font-medium block truncate" title="{{ $incident->location }}">
                                         {{ $incident->location }}
                                     </span>
-                                    <span class="text-[11px] text-outline flex items-center gap-1 mt-0.5">
-                                        <span class="material-symbols-outlined text-[13px]">location_on</span>
-                                        AIFA Operaciones
+                                    <span class="text-[9.5px] text-outline flex items-center gap-0.5 mt-0.5 truncate">
+                                        <span class="material-symbols-outlined text-[11px] shrink-0">location_on</span>
+                                        <span class="truncate">AIFA Operaciones</span>
                                     </span>
                                 </td>
 
                                 <!-- Prioridad -->
-                                <td class="py-3.5 px-4 whitespace-nowrap">
+                                <td class="py-2.5 px-2 whitespace-nowrap text-center">
                                     <x-badge-priority :priority="$incident->priority" />
                                 </td>
 
                                 <!-- Estado -->
-                                <td class="py-3.5 px-4 whitespace-nowrap">
-                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-semibold text-[11px] uppercase tracking-wider
+                                <td class="py-2.5 px-2 whitespace-nowrap text-center">
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-semibold text-[10px] whitespace-nowrap
                                         @if($incident->status->code === 'NUEVA' || $incident->status->code === 'ASIGNADA') bg-[rgba(61,130,198,0.15)] text-[#6FA2D2] border border-[rgba(61,130,198,0.30)]
                                         @elseif($incident->status->code === 'EN_ATENCION' || $incident->status->code === 'EN_PROCESO') bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)]
                                         @elseif($incident->status->code === 'RESUELTA') bg-[rgba(32,201,151,0.15)] text-[#20C997] border border-[rgba(32,201,151,0.30)]
                                         @else bg-[#151A21] text-[#9AA5B4] border border-[#252C35] @endif">
                                         @if($incident->status->code === 'EN_ATENCION' || $incident->status->code === 'EN_PROCESO')
-                                            <span class="w-1.5 h-1.5 rounded-full bg-[#E0A21A] animate-pulse"></span>
+                                            <span class="w-1 h-1 rounded-full bg-[#E0A21A] animate-pulse shrink-0"></span>
                                         @endif
-                                        {{ $incident->status->name }}
+                                        <span>{{ $incident->status->name }}</span>
                                     </span>
                                 </td>
 
-                                <!-- Responsable GTS -->
-                                <td class="py-3.5 px-4 whitespace-nowrap">
-                                    @if($incident->assignedTo)
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-6 h-6 rounded-full bg-surface-container-high border border-border-subtle flex items-center justify-center font-mono text-[10px] text-primary font-bold">
+                                <!-- Responsable GTS / Especialista -->
+                                <td class="py-2.5 px-2 whitespace-nowrap">
+                                    @if($incident->isAssignedToTics())
+                                        <div class="flex items-center gap-1 truncate" title="Especialista TICS">
+                                            <span class="w-5 h-5 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center font-mono text-[9px] text-primary font-bold shrink-0">
+                                                TI
+                                            </span>
+                                            <span class="text-on-surface font-medium text-xs truncate">
+                                                TICS
+                                            </span>
+                                        </div>
+                                    @elseif($incident->assignedTo)
+                                        <div class="flex items-center gap-1 truncate" title="{{ $incident->assignedTo->name }}">
+                                            <span class="w-5 h-5 rounded-full bg-surface-container-high border border-border-subtle flex items-center justify-center font-mono text-[9px] text-primary font-bold shrink-0">
                                                 {{ substr($incident->assignedTo->name, 0, 2) }}
                                             </span>
-                                            <span class="text-on-surface font-medium text-xs truncate max-w-[140px]">
+                                            <span class="text-on-surface font-medium text-xs truncate">
                                                 {{ $incident->assignedTo->name }}
                                             </span>
                                         </div>
                                     @else
-                                        <span class="px-2 py-0.5 rounded bg-surface-container-low text-outline font-mono text-[10px] border border-border-subtle">
+                                        <span class="px-1.5 py-0.5 rounded bg-surface-container-low text-outline font-mono text-[9.5px] border border-border-subtle whitespace-nowrap">
                                             Sin Asignar
                                         </span>
                                     @endif
                                 </td>
 
                                 <!-- Fecha y Hora -->
-                                <td class="py-3.5 px-4 whitespace-nowrap font-mono text-[11px] text-on-surface-variant">
-                                    <span class="block text-on-surface">{{ $incident->created_at->format('d M Y') }}</span>
-                                    <span class="text-outline">{{ $incident->created_at->format('H:i') }} hrs</span>
+                                <td class="py-2.5 px-2 whitespace-nowrap font-mono text-[10px] leading-tight text-on-surface-variant text-center">
+                                    <span class="block text-on-surface font-medium">{{ $incident->created_at->format('d/m/Y') }}</span>
+                                    <span class="text-outline text-[9.5px]">{{ $incident->created_at->format('H:i') }} hrs</span>
                                 </td>
 
                                 <!-- Acciones -->
-                                <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                                <td class="py-2.5 px-2 text-right whitespace-nowrap">
                                     <a
                                         href="{{ route('incidents.show', $incident->folio) }}"
-                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container text-primary text-xs font-semibold border border-border-subtle transition-colors shadow-sm"
+                                        class="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container text-primary text-xs font-semibold border border-border-subtle hover:border-primary/40 transition-colors shadow-sm"
+                                        title="Ver detalle de {{ $incident->folio }}"
                                     >
-                                        <span class="material-symbols-outlined text-[16px]">visibility</span>
-                                        <span>Ver detalle</span>
+                                        <span class="material-symbols-outlined text-[15px]">visibility</span>
+                                        <span>Ver</span>
                                     </a>
                                 </td>
                             </tr>
@@ -297,7 +327,7 @@
                                         </div>
                                         @if(request()->hasAny(['search', 'status_id', 'priority_id', 'category_id']))
                                             <a
-                                                href="{{ route('incidents.index') }}"
+                                                href="{{ request()->routeIs('incidents.my') ? route('incidents.my') : route('incidents.index') }}"
                                                 class="mt-2 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-surface-container-high text-primary text-xs font-semibold hover:bg-surface-container transition-colors"
                                             >
                                                 Restablecer filtros

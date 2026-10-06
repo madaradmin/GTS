@@ -24,16 +24,54 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $user = $this->user();
+        $isAdmin = $user && $user->isAdmin();
+
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
-                'required',
+                'nullable',
                 'string',
                 'lowercase',
                 'email',
                 'max:255',
-                Rule::unique(User::class)->ignore($this->user()->id),
+                Rule::unique(User::class)->ignore($user?->id),
             ],
+        ];
+
+        if ($isAdmin) {
+            $rules['username'] = [
+                'required',
+                'string',
+                'lowercase',
+                'max:50',
+                'regex:/^[a-zA-Z0-9._-]+$/',
+                Rule::unique(User::class)->ignore($user?->id),
+            ];
+        } else {
+            $rules['username'] = [
+                'nullable',
+                'string',
+                function ($attribute, $value, $fail) use ($user) {
+                    if (! is_null($value) && $user && strtolower($value) !== strtolower($user->username)) {
+                        $fail('No está autorizado para modificar su nombre de usuario institucional.');
+                    }
+                },
+            ];
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Get custom error messages for validator errors.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'username.regex' => 'El nombre de usuario sólo puede contener letras, números, puntos, guiones y guiones bajos.',
         ];
     }
 }

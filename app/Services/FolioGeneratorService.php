@@ -21,7 +21,7 @@ class FolioGeneratorService
                 ->lockForUpdate()
                 ->first();
 
-            if (!$sequence) {
+            if (! $sequence) {
                 // Si el año no existe, se inicializa en 0
                 $sequence = FolioSequence::create([
                     'year' => $year,
@@ -54,4 +54,3 @@ class FolioGeneratorService
         return sprintf('INC-%04d-%04d', $year, $nextNumber);
     }
 }
-

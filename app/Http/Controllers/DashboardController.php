@@ -17,20 +17,23 @@ class DashboardController extends Controller
      */
     public function index(Request $request): View
     {
-        abort_if(!$request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
 
         $period = in_array($request->query('period'), ['today', '24h', 'week'], true)
             ? $request->query('period')
             : 'today';
 
-        $metrics = $this->dashboardService->getMetrics($period);
-        $recentIncidents = $this->dashboardService->getRecentIncidents(6);
-        $immediateAttention = $this->dashboardService->getImmediateAttentionQueue(3);
-        $distribution = $this->dashboardService->getCategoryDistribution();
+        $user = $request->user();
+
+        $metrics = $this->dashboardService->getMetrics($period, $user);
+        $recentIncidents = $this->dashboardService->getRecentIncidents(6, $user);
+        $immediateAttention = $this->dashboardService->getImmediateAttentionQueue(3, $user);
+        $distribution = $this->dashboardService->getCategoryDistribution($user);
         $activeTechnicians = $this->dashboardService->getActiveTechniciansCount();
         $currentShift = $this->dashboardService->getCurrentShift();
-        $prioritiesSummary = $this->dashboardService->getPrioritiesBreakdown();
-        $recentActivities = $this->dashboardService->getRecentActivities(4);
+        $prioritiesSummary = $this->dashboardService->getPrioritiesBreakdown($user);
+        $recentActivities = $this->dashboardService->getRecentActivities(4, $user);
+        $systemsHealth = $this->dashboardService->getSystemsHealth();
 
         return view('dashboard', [
             'metrics' => $metrics,
@@ -41,7 +44,7 @@ class DashboardController extends Controller
             'currentShift' => $currentShift,
             'prioritiesSummary' => $prioritiesSummary,
             'recentActivities' => $recentActivities,
+            'systemsHealth' => $systemsHealth,
         ]);
     }
 }
-

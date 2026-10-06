@@ -8,6 +8,7 @@ use App\Models\Priority;
 use App\Models\Role;
 use App\Models\Status;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -18,9 +19,13 @@ class FinalSystemIntegrationAuditTest extends TestCase
     use RefreshDatabase;
 
     protected User $apocUser;
+
     protected User $gtsCoordinator;
+
     protected User $gtsTechActive;
+
     protected User $gtsTechUnavailable;
+
     protected User $adminUser;
 
     protected function setUp(): void
@@ -43,7 +48,6 @@ class FinalSystemIntegrationAuditTest extends TestCase
             'name' => 'Coordinador GTS Guardia',
             'email' => 'gts.coord.audit@aifa.aero',
             'role_id' => $gtsRole->id,
-            'shift_status' => 'ACTIVO',
             'is_active' => true,
         ]);
 
@@ -51,7 +55,6 @@ class FinalSystemIntegrationAuditTest extends TestCase
             'name' => 'Técnico GTS Disponible',
             'email' => 'gts.active.audit@aifa.aero',
             'role_id' => $gtsRole->id,
-            'shift_status' => 'ACTIVO',
             'is_active' => true,
         ]);
 
@@ -59,7 +62,6 @@ class FinalSystemIntegrationAuditTest extends TestCase
             'name' => 'Técnico GTS Receso',
             'email' => 'gts.unavail.audit@aifa.aero',
             'role_id' => $gtsRole->id,
-            'shift_status' => 'NO DISPONIBLE',
             'is_active' => true,
         ]);
 
@@ -86,7 +88,7 @@ class FinalSystemIntegrationAuditTest extends TestCase
         ]);
 
         // Simular despacho de notificación de nueva incidencia
-        app(\App\Services\NotificationService::class)->notifyIncidentCreated($incident, $this->apocUser);
+        app(NotificationService::class)->notifyIncidentCreated($incident, $this->apocUser);
 
         // GTS y Admin deben tener notificaciones no leídas
         $gtsUnread = $this->gtsCoordinator->unreadNotifications()->count();
@@ -202,22 +204,25 @@ class FinalSystemIntegrationAuditTest extends TestCase
 
     public function test_audit_log_access_and_filtering(): void
     {
-        // GTS y ADMIN pueden consultar auditoría
+        // GTS no puede consultar auditoría (403 Forbidden)
         $responseGts = $this->actingAs($this->gtsCoordinator)->get(route('audit.index'));
-        $responseGts->assertOk();
-        $responseGts->assertSee('Bitácora General de Auditoría');
+        $responseGts->assertForbidden();
 
+        // APOC activo no puede consultar auditoría (403 Forbidden)
+        $responseApoc = $this->actingAs($this->apocUser)->get(route('audit.index'));
+        $responseApoc->assertForbidden();
+
+        // ADMIN posee acceso exclusivo a auditoría
         $responseAdmin = $this->actingAs($this->adminUser)->get(route('audit.index'));
         $responseAdmin->assertOk();
+        $responseAdmin->assertSee('Bitácora General de Auditoría');
 
-        // APOC activo también puede consultar auditoría para trazabilidad aeronáutica
-        $responseApoc = $this->actingAs($this->apocUser)->get(route('audit.index'));
-        $responseApoc->assertOk();
-
-        // Usuario inactivo es rechazado con 403
+        // Usuario inactivo es redirigido al login con error institucional
         $inactiveUser = User::factory()->inactive()->create();
         $responseInactive = $this->actingAs($inactiveUser)->get(route('audit.index'));
-        $responseInactive->assertForbidden();
+        $responseInactive->assertRedirect(route('login'));
+        $responseInactive->assertSessionHasErrors('username');
+        $this->assertGuest();
     }
 
     /*
@@ -252,34 +257,24 @@ class FinalSystemIntegrationAuditTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    public function test_availability_shift_and_assignment_with_warnings(): void
+    public function test_shift_status_route_eliminated_and_standard_assignment(): void
     {
-        // 1. Agente GTS actualiza su estado de turno a NO DISPONIBLE
-        $shiftResponse = $this->actingAs($this->gtsTechActive)->post(route('profile.shift-status'), [
+        // 1. Verificar que ruta /profile/shift-status devuelve 404
+        $shiftResponse = $this->actingAs($this->gtsTechActive)->post('/profile/shift-status', [
             'status' => 'NO DISPONIBLE',
-            'reason' => 'Receso programado de guardia',
         ]);
-        $shiftResponse->assertRedirect();
-        $this->assertEquals('NO DISPONIBLE', $this->gtsTechActive->fresh()->shift_status);
+        $shiftResponse->assertStatus(404);
 
-        // Se verifica registro en bitácora de turno
-        $this->assertDatabaseHas('agent_availability_logs', [
-            'user_id' => $this->gtsTechActive->id,
-            'status' => 'NO DISPONIBLE',
-            'reason' => 'Receso programado de guardia',
-        ]);
-
-        // 2. Asignación de incidencia respetando advertencia operacional
+        // 2. Asignación directa y limpia de incidencia a especialista técnico
         $incident = Incident::factory()->nueva()->create();
 
-        // Asignación a técnico no disponible procede con advertencia informativa
         $assignResponse = $this->actingAs($this->gtsCoordinator)->post(route('incidents.assign', $incident), [
             'assigned_to_user_id' => $this->gtsTechActive->id,
             'comment' => 'Asignado de guardia preventiva',
         ]);
         $assignResponse->assertRedirect();
         $assignResponse->assertSessionHas('success');
-        $this->assertStringContainsString('NO DISPONIBLE', session('success'));
+        $this->assertStringNotContainsString('NO DISPONIBLE', session('success'));
     }
 
     /*
@@ -312,7 +307,6 @@ class FinalSystemIntegrationAuditTest extends TestCase
         $this->assertCount(1, $incident->attachments);
 
         // 2. ASIGNAR: GTS asigna especialista (ASIGNADA)
-        $this->gtsCoordinator->update(['shift_status' => 'ACTIVO']);
         $assignResponse = $this->actingAs($this->gtsCoordinator)->post(route('incidents.assign', $incident), [
             'assigned_to_user_id' => $this->gtsCoordinator->id,
             'comment' => 'Toma técnica directa para revisión de switch de borde.',
@@ -344,9 +338,10 @@ class FinalSystemIntegrationAuditTest extends TestCase
         $incident->refresh();
         $this->assertEquals('RESUELTA', $incident->status->code);
 
-        // GTS NO puede auto-cerrar la incidencia (Segregación de funciones)
-        $invalidCloseResponse = $this->actingAs($this->gtsCoordinator)->post(route('incidents.close', $incident), [
-            'comment' => 'Intento de autocierre por GTS',
+        // Usuario inactivo NO puede cerrar la incidencia
+        $inactiveUser = User::factory()->create(['is_active' => false]);
+        $invalidCloseResponse = $this->actingAs($inactiveUser)->post(route('incidents.close', $incident), [
+            'comment' => 'Intento de cierre por usuario inactivo',
         ]);
         $invalidCloseResponse->assertForbidden();
 

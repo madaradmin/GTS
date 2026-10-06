@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Incident;
-use App\Models\IncidentHistory;
-use App\Models\Status;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

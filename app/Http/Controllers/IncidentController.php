@@ -13,10 +13,12 @@ use App\Models\Incident;
 use App\Models\Priority;
 use App\Models\Status;
 use App\Models\User;
+use App\Services\FileStorageService;
 use App\Services\FolioGeneratorService;
 use App\Services\IncidentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 
@@ -34,10 +36,20 @@ class IncidentController extends Controller
     {
         Gate::authorize('viewAny', Incident::class);
 
-        $filters = $request->only(['search', 'status_id', 'priority_id', 'category_id']);
+        $user = $request->user();
 
-        $incidents = Incident::with(['category', 'priority', 'status', 'reportedBy', 'assignedTo'])
-            ->filter($filters)
+        // Seguridad de Perfil: APOC no tiene asignaciones técnicas
+        if ($request->has('assigned_to')) {
+            abort_if($user->isApoc(), 403, 'Acceso denegado: El perfil APOC no tiene asignaciones técnicas.');
+        }
+
+        $filters = $request->only(['search', 'status_id', 'priority_id', 'category_id', 'assigned_to', 'reported_by']);
+
+        // Aislamiento estricto de incidencias por ámbito operativo según rol del usuario
+        $query = Incident::with(['category', 'priority', 'status', 'reportedBy.role', 'assignedTo'])
+            ->forUserScope($user);
+
+        $incidents = $query->filter($filters)
             ->orderByRaw("
                 CASE 
                     WHEN status_id IN (SELECT id FROM statuses WHERE code IN ('NUEVA', 'ASIGNADA', 'EN_ATENCION')) THEN 1 
@@ -45,21 +57,31 @@ class IncidentController extends Controller
                 END ASC
             ")
             ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->paginate(15)
             ->withQueryString();
 
         $categories = Category::where('is_active', true)->orderBy('name')->get();
         $priorities = Priority::where('is_active', true)->orderBy('level')->get();
-        $statuses   = Status::orderBy('step_order')->get();
+        $statuses = Status::orderBy('step_order')->get();
+
+        $baseMetricsQuery = Incident::query()->forUserScope($user);
+        if ($request->routeIs('incidents.my')) {
+            if ($user->isGts() && ! empty($filters['assigned_to'])) {
+                $baseMetricsQuery->where('assigned_to_user_id', $filters['assigned_to']);
+            } elseif (! empty($filters['reported_by'])) {
+                $baseMetricsQuery->where('reported_by_user_id', $filters['reported_by']);
+            }
+        }
 
         $metrics = [
-            'total' => Incident::count(),
-            'nuevas' => Incident::whereHas('status', fn($q) => $q->where('code', 'NUEVA'))->count(),
-            'en_atencion' => Incident::whereHas('status', fn($q) => $q->where('code', 'EN_ATENCION'))->count(),
-            'criticas' => Incident::whereHas('priority', fn($q) => $q->where('slug', 'critica'))
-                ->whereHas('status', fn($q) => $q->where('is_terminal', false))
+            'total' => (clone $baseMetricsQuery)->count(),
+            'nuevas' => (clone $baseMetricsQuery)->whereHas('status', fn ($q) => $q->where('code', 'NUEVA'))->count(),
+            'en_atencion' => (clone $baseMetricsQuery)->whereHas('status', fn ($q) => $q->where('code', 'EN_ATENCION'))->count(),
+            'criticas' => (clone $baseMetricsQuery)->whereHas('priority', fn ($q) => $q->where('slug', 'critica'))
+                ->whereHas('status', fn ($q) => $q->where('is_terminal', false))
                 ->count(),
-            'resueltas' => Incident::whereHas('status', fn($q) => $q->where('code', 'RESUELTA'))->count(),
+            'resueltas' => (clone $baseMetricsQuery)->whereHas('status', fn ($q) => $q->where('code', 'RESUELTA'))->count(),
         ];
 
         return view('incidents.index', compact(
@@ -70,6 +92,26 @@ class IncidentController extends Controller
             'filters',
             'metrics'
         ));
+    }
+
+    /**
+     * Muestra el listado de "Mis incidencias" para el usuario autenticado (APOC / GTS / Administrador).
+     */
+    public function myIncidents(Request $request): View
+    {
+        Gate::authorize('viewAny', Incident::class);
+
+        $user = $request->user();
+
+        if ($user->isGts()) {
+            $request->merge(['assigned_to' => $user->id]);
+        } elseif ($user->isApoc()) {
+            $request->merge(['reported_by' => $user->id]);
+        } elseif ($user->isAdmin() && ! $request->has('assigned_to') && ! $request->has('reported_by')) {
+            $request->merge(['reported_by' => $user->id]);
+        }
+
+        return $this->index($request);
     }
 
     /**
@@ -114,16 +156,15 @@ class IncidentController extends Controller
             'category',
             'priority',
             'status',
-            'reportedBy',
+            'reportedBy.role',
             'assignedTo',
             'histories.user',
             'attachments.uploadedBy',
         ]);
 
         $gtsUsers = User::where('is_active', true)
-            ->whereHas('role', fn($q) => $q->where('slug', 'gts'))
+            ->whereHas('role', fn ($q) => $q->where('slug', 'gts'))
             ->with('role')
-            ->orderByRaw("CASE WHEN shift_status = 'ACTIVO' THEN 1 ELSE 2 END ASC")
             ->orderBy('name', 'asc')
             ->get();
 
@@ -137,23 +178,33 @@ class IncidentController extends Controller
     {
         Gate::authorize('assign', $incident);
 
-        $technician = User::findOrFail($request->validated('assigned_to_user_id'));
+        $assignedValue = $request->validated('assigned_to_user_id');
 
-        $this->incidentService->assignIncident(
-            incident: $incident,
-            assigner: $request->user(),
-            technician: $technician,
-            comment: $request->validated('comment')
-        );
+        if (strtolower((string) $assignedValue) === 'tics') {
+            $this->incidentService->assignToSpecialist(
+                incident: $incident,
+                assigner: $request->user(),
+                specialist: 'TICS',
+                comment: $request->validated('comment')
+            );
 
-        $isSelfAssign = $request->user()->id === $technician->id;
-        $statusNote = $technician->isShiftUnavailable()
-            ? " (Nota de disponibilidad: El especialista se encuentra actualmente marcado como NO DISPONIBLE)."
-            : "";
+            $message = "Incidencia {$incident->folio} asignada al especialista TICS exitosamente.";
+        } else {
+            $technician = User::findOrFail($assignedValue);
 
-        $message = $isSelfAssign
-            ? "Has tomado la responsabilidad técnica de la incidencia {$incident->folio}.{$statusNote}"
-            : "Incidencia {$incident->folio} asignada al especialista {$technician->name} exitosamente.{$statusNote}";
+            $this->incidentService->assignIncident(
+                incident: $incident,
+                assigner: $request->user(),
+                technician: $technician,
+                comment: $request->validated('comment')
+            );
+
+            $isSelfAssign = $request->user()->id === $technician->id;
+
+            $message = $isSelfAssign
+                ? "Has tomado la responsabilidad técnica de la incidencia {$incident->folio}."
+                : "Incidencia {$incident->folio} asignada al especialista {$technician->name} exitosamente.";
+        }
 
         return redirect()->route('incidents.show', $incident->folio)
             ->with('success', $message);
@@ -190,7 +241,7 @@ class IncidentController extends Controller
         );
 
         return redirect()->route('incidents.show', $incident->folio)
-            ->with('success', "Nota técnica de campo registrada exitosamente en la bitácora.");
+            ->with('success', 'Nota técnica de campo registrada exitosamente en la bitácora.');
     }
 
     /**
@@ -234,13 +285,37 @@ class IncidentController extends Controller
     {
         Gate::authorize('close', $incident);
 
+        $closer = $request->user();
         $this->incidentService->closeIncident(
             incident: $incident,
-            closer: $request->user(),
+            closer: $closer,
             comment: $request->validated('comment')
         );
 
         return redirect()->route('incidents.show', $incident->folio)
-            ->with('success', "Incidencia {$incident->folio} cerrada definitivamente con visto bueno de APOC. Expediente archivado en modo inmutable.");
+            ->with('success', "Incidencia {$incident->folio} cerrada definitivamente con visto bueno de {$closer->getTaggedName()}. Expediente archivado en modo inmutable.");
+    }
+
+    /**
+     * Eliminación de una incidencia con borrado seguro de evidencias (exclusivo Administrador).
+     */
+    public function destroy(
+        Request $request,
+        Incident $incident,
+        FileStorageService $fileStorageService
+    ): RedirectResponse {
+        abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: Solo el Administrador puede eliminar incidencias.');
+        Gate::authorize('delete', $incident);
+
+        $folio = $incident->folio;
+
+        DB::transaction(function () use ($incident, $fileStorageService) {
+            $fileStorageService->deleteIncidentFiles($incident);
+            $incident->delete();
+        });
+
+        return redirect()->route('incidents.index')
+            ->with('status_message', "La incidencia #{$folio} ha sido eliminada exitosamente.");
     }
 }

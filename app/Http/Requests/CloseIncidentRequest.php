@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CloseIncidentRequest extends FormRequest
@@ -15,13 +16,13 @@ class CloseIncidentRequest extends FormRequest
 
         return $incident
             ? $this->user()->can('close', $incident)
-            : ($this->user()->isApoc() || $this->user()->isAdmin());
+            : ($this->user()->isApoc() || $this->user()->isGts() || $this->user()->isAdmin());
     }
 
     /**
      * Reglas de validación para el cierre formal de la incidencia.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -46,4 +47,3 @@ class CloseIncidentRequest extends FormRequest
         ];
     }
 }
-

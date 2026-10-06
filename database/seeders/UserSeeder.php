@@ -15,13 +15,14 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $apocRole = Role::where('slug', 'apoc')->firstOrFail();
-        $gtsRole  = Role::where('slug', 'gts')->firstOrFail();
+        $gtsRole = Role::where('slug', 'gts')->firstOrFail();
         $adminRole = Role::where('slug', 'admin')->firstOrFail();
 
         $users = [
             // Operador APOC de guardia (observado en las maquetas del reporte)
             [
                 'name' => 'Tco. M. Reyes',
+                'username' => 'apoc',
                 'email' => 'apoc@aifa.aero',
                 'password' => Hash::make('Password123!'),
                 'role_id' => $apocRole->id,
@@ -31,6 +32,7 @@ class UserSeeder extends Seeder
             // Especialistas GTS de guardia (observados en asignación y notas técnicas)
             [
                 'name' => 'Ing. Roberto Morales',
+                'username' => 'gts.morales',
                 'email' => 'gts.morales@aifa.aero',
                 'password' => Hash::make('Password123!'),
                 'role_id' => $gtsRole->id,
@@ -39,6 +41,7 @@ class UserSeeder extends Seeder
             ],
             [
                 'name' => 'Ing. Carlos Mendoza',
+                'username' => 'gts.mendoza',
                 'email' => 'gts.mendoza@aifa.aero',
                 'password' => Hash::make('Password123!'),
                 'role_id' => $gtsRole->id,
@@ -48,6 +51,7 @@ class UserSeeder extends Seeder
             // Administrador de Seguridad Tecnológica
             [
                 'name' => 'Admin Seguridad Tecnológica',
+                'username' => 'admin',
                 'email' => 'admin@aifa.aero',
                 'password' => Hash::make('Password123!'),
                 'role_id' => $adminRole->id,
@@ -58,10 +62,9 @@ class UserSeeder extends Seeder
 
         foreach ($users as $userData) {
             User::firstOrCreate(
-                ['email' => $userData['email']],
+                ['username' => $userData['username']],
                 $userData
             );
         }
     }
 }
-

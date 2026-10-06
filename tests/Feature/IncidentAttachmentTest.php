@@ -40,7 +40,7 @@ class IncidentAttachmentTest extends TestCase
         $incident = Incident::factory()->create();
         $attachment = IncidentAttachment::factory()->create([
             'incident_id' => $incident->id,
-            'stored_path' => 'incidents/' . $incident->id . '/test.png',
+            'stored_path' => 'incidents/'.$incident->id.'/test.png',
         ]);
 
         $this->get("/incidencias/{$incident->folio}/adjuntos/{$attachment->id}/ver")
@@ -235,7 +235,7 @@ class IncidentAttachmentTest extends TestCase
 
         $attachmentA = IncidentAttachment::factory()->create([
             'incident_id' => $incidentA->id,
-            'stored_path' => 'incidents/' . $incidentA->id . '/some_file.pdf',
+            'stored_path' => 'incidents/'.$incidentA->id.'/some_file.pdf',
         ]);
         Storage::disk('local')->put($attachmentA->stored_path, 'dummy content');
 
@@ -253,7 +253,7 @@ class IncidentAttachmentTest extends TestCase
         $incident = Incident::factory()->create();
         $attachment = IncidentAttachment::factory()->create([
             'incident_id' => $incident->id,
-            'stored_path' => 'incidents/' . $incident->id . '/test.pdf',
+            'stored_path' => 'incidents/'.$incident->id.'/test.pdf',
         ]);
         Storage::disk('local')->put($attachment->stored_path, 'test');
 
@@ -272,4 +272,3 @@ class IncidentAttachmentTest extends TestCase
             ->assertForbidden();
     }
 }
-

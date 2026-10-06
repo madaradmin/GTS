@@ -11,7 +11,6 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPDFInstance;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 
 class ReportService
 {
@@ -20,24 +19,48 @@ class ReportService
     ) {}
 
     /**
-     * Construye la consulta de incidencias basada en los filtros multidimensionales seleccionados.
+     * Construye la consulta de incidencias basada en los filtros multidimensionales seleccionados
+     * o en un conjunto específico de identificadores/folios seleccionados.
      *
-     * @param array<string, mixed> $filters
-     * @return Builder
+     * @param  array<string, mixed>  $filters
+     * @param  array<int|string>|null  $selectedIds
      */
-    public function buildQuery(array $filters = []): Builder
+    public function buildQuery(array $filters = [], ?array $selectedIds = null, ?User $user = null): Builder
     {
         $query = Incident::query()->with([
             'category',
             'priority',
             'status',
-            'reportedBy',
-            'assignedTo',
+            'reportedBy.role',
+            'assignedTo.role',
+            'histories.user.role',
+            'attachments.user',
         ]);
 
-        // 1. Presets temporales predefinidos
-        if (!empty($filters['period_preset']) && empty($filters['date_from']) && empty($filters['date_to'])) {
-            $tz = 'America/Mexico_City';
+        // Aislamiento estricto de incidencias por ámbito operativo según rol del usuario
+        $query->forUserScope($user);
+
+        // Si se especificó una selección explícita de incidencias (por ID o Folio)
+        if (! empty($selectedIds)) {
+            $numericIds = array_values(array_filter($selectedIds, fn ($id) => is_numeric($id)));
+            $stringFolios = array_values(array_filter($selectedIds, fn ($id) => ! is_numeric($id)));
+
+            return $query->where(function (Builder $q) use ($numericIds, $stringFolios) {
+                if (! empty($numericIds)) {
+                    $q->whereIn('incidents.id', $numericIds);
+                }
+                if (! empty($stringFolios)) {
+                    $q->orWhereIn('incidents.folio', $stringFolios);
+                }
+            })->orderBy('incidents.created_at', 'desc');
+        }
+
+        $search = trim($filters['search'] ?? '');
+        $isSpecificFolio = ! empty($filters['folio']) || (bool) preg_match('/^INC-\d{4}-\d+/i', $search);
+
+        // 1. Presets temporales predefinidos (solo si no es búsqueda directa por folio puntual)
+        if (! $isSpecificFolio && ! empty($filters['period_preset']) && empty($filters['date_from']) && empty($filters['date_to'])) {
+            $tz = config('app.timezone', 'America/Mexico_City');
             match ($filters['period_preset']) {
                 'today' => $query->whereBetween('incidents.created_at', [
                     Carbon::now($tz)->startOfDay(),
@@ -56,55 +79,61 @@ class ReportService
         }
 
         // 2. Rango manual de fechas
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             $from = Carbon::parse($filters['date_from'])->startOfDay();
             $query->where('incidents.created_at', '>=', $from);
         }
 
-        if (!empty($filters['date_to'])) {
+        if (! empty($filters['date_to'])) {
             $to = Carbon::parse($filters['date_to'])->endOfDay();
             $query->where('incidents.created_at', '<=', $to);
         }
 
         // 3. Filtro de Estado Operacional
-        if (!empty($filters['status_id'])) {
+        if (! empty($filters['status_id'])) {
             $query->where('incidents.status_id', $filters['status_id']);
         }
 
         // 4. Filtro de Nivel de Prioridad
-        if (!empty($filters['priority_id'])) {
+        if (! empty($filters['priority_id'])) {
             $query->where('incidents.priority_id', $filters['priority_id']);
         }
 
         // 5. Filtro de Subsistema / Categoría
-        if (!empty($filters['category_id'])) {
+        if (! empty($filters['category_id'])) {
             $query->where('incidents.category_id', $filters['category_id']);
         }
 
         // 6. Filtro de Técnico GTS Asignado
-        if (!empty($filters['assigned_to'])) {
+        if (! empty($filters['assigned_to'])) {
             $query->where('incidents.assigned_to_user_id', $filters['assigned_to']);
         }
 
         // 7. Filtro de Reportante APOC
-        if (!empty($filters['reported_by'])) {
+        if (! empty($filters['reported_by'])) {
             $query->where('incidents.reported_by_user_id', $filters['reported_by']);
         }
 
         // 8. Preset de Tipo de Reporte Operativo
-        if (!empty($filters['report_type'])) {
+        if (! empty($filters['report_type'])) {
             match ($filters['report_type']) {
-                'critical' => $query->whereHas('priority', fn($p) => $p->where('slug', 'critica')),
-                'high' => $query->whereHas('priority', fn($p) => $p->where('slug', 'alta')),
-                'open' => $query->whereHas('status', fn($s) => $s->where('is_terminal', false)),
-                'resolved' => $query->whereHas('status', fn($s) => $s->whereIn('code', ['RESUELTA', 'CERRADA'])),
+                'critical' => $query->whereHas('priority', fn ($p) => $p->where('slug', 'critica')),
+                'high' => $query->whereHas('priority', fn ($p) => $p->where('slug', 'alta')),
+                'open' => $query->whereHas('status', fn ($s) => $s->where('is_terminal', false)),
+                'resolved' => $query->whereHas('status', fn ($s) => $s->whereIn('code', ['RESUELTA', 'CERRADA'])),
                 default => null,
             };
         }
 
-        // 9. Búsqueda libre por término
-        if (!empty($filters['search'])) {
-            $query->search($filters['search']);
+        // 9. Búsqueda por folio directo o por término libre
+        if (! empty($filters['folio'])) {
+            $query->where('incidents.folio', strtoupper(trim($filters['folio'])));
+        } elseif (! empty($search)) {
+            if ($isSpecificFolio) {
+                $query->where('incidents.folio', strtoupper($search));
+            } else {
+                $query->search($search);
+            }
         }
 
         return $query->orderBy('incidents.created_at', 'desc');
@@ -113,7 +142,6 @@ class ReportService
     /**
      * Calcula métricas y resumen ejecutivo sobre el conjunto filtrado.
      *
-     * @param Builder $query
      * @return array<string, mixed>
      */
     public function calculateSummary(Builder $query): array
@@ -229,27 +257,44 @@ class ReportService
      */
     public function generateReportFolio(): string
     {
-        return 'REP-' . Carbon::now('America/Mexico_City')->format('Ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
+        return 'REP-'.Carbon::now(config('app.timezone', 'America/Mexico_City'))->format('Ymd').'-'.strtoupper(substr(bin2hex(random_bytes(2)), 0, 4));
     }
 
     /**
      * Genera la instancia DomPDF para exportación institucional.
+     * Permite exportar sobre filtros o sobre una selección explícita de incidencias (1 ficha por hoja).
      *
-     * @param array<string, mixed> $filters
-     * @param User $requester
-     * @param string|null $reportFolio
-     * @return DomPDFInstance
+     * @param  array<string, mixed>  $filters
+     * @param  array<int|string>|null  $selectedIds
      */
-    public function generatePdf(array $filters, User $requester, ?string $reportFolio = null): DomPDFInstance
+    public function generatePdf(array $filters, User $requester, ?string $reportFolio = null, ?array $selectedIds = null): DomPDFInstance
     {
-        $query = $this->buildQuery($filters);
+        $query = $this->buildQuery($filters, $selectedIds, $requester);
         $summary = $this->calculateSummary($query);
-        $incidents = $query->get();
+        $incidents = $query->with([
+            'category',
+            'priority',
+            'status',
+            'reportedBy.role',
+            'assignedTo.role',
+            'histories.user.role',
+            'attachments.user',
+        ])->get();
+
         $reportFolio = $reportFolio ?? $this->generateReportFolio();
-        $generatedAt = Carbon::now('America/Mexico_City')->format('d/m/Y H:i:s');
+        $generatedAt = Carbon::now(config('app.timezone', 'America/Mexico_City'))->format('d/m/Y H:i:s');
 
         // Mapeo legible de filtros aplicados
         $appliedFilters = $this->getFilterLabels($filters);
+        if (! empty($selectedIds)) {
+            $appliedFilters['Selección'] = "{$incidents->count()} incidencias seleccionadas";
+        }
+
+        // Codificación de logotipos institucionales para renderizado nítido en Dompdf
+        $gtsLogoPath = public_path('images/gts-logo.png');
+        $aifaLogoPath = public_path('images/aifa-logo.png');
+        $gtsLogoBase64 = file_exists($gtsLogoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($gtsLogoPath)) : '';
+        $aifaLogoBase64 = file_exists($aifaLogoPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($aifaLogoPath)) : '';
 
         /** @var DomPDFInstance $pdf */
         $pdf = Pdf::loadView('reports.pdf', [
@@ -260,9 +305,11 @@ class ReportService
             'requester' => $requester,
             'reportFolio' => $reportFolio,
             'generatedAt' => $generatedAt,
+            'gtsLogoBase64' => $gtsLogoBase64,
+            'aifaLogoBase64' => $aifaLogoBase64,
         ]);
 
-        $pdf->setPaper('a4', 'landscape');
+        $pdf->setPaper('a4', 'portrait');
         $pdf->setOption('isPhpEnabled', true);
         $pdf->setOption('isRemoteEnabled', true);
 
@@ -272,14 +319,18 @@ class ReportService
     /**
      * Resuelve etiquetas legibles para los filtros aplicados en el encabezado del reporte.
      *
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      * @return array<string, string>
      */
     public function getFilterLabels(array $filters): array
     {
         $labels = [];
 
-        if (!empty($filters['period_preset'])) {
+        if (! empty($filters['folio'])) {
+            $labels['Folio Específico'] = strtoupper($filters['folio']);
+        }
+
+        if (! empty($filters['period_preset'])) {
             $labels['Período'] = match ($filters['period_preset']) {
                 'today' => 'Turno de Hoy',
                 'last_7_days', 'week' => 'Últimos 7 Días',
@@ -288,48 +339,48 @@ class ReportService
             };
         }
 
-        if (!empty($filters['date_from']) || !empty($filters['date_to'])) {
+        if (! empty($filters['date_from']) || ! empty($filters['date_to'])) {
             $from = $filters['date_from'] ?? 'Inicio histórico';
             $to = $filters['date_to'] ?? 'Fecha actual';
             $labels['Rango Manual'] = "{$from} al {$to}";
         }
 
-        if (!empty($filters['status_id'])) {
+        if (! empty($filters['status_id'])) {
             $status = Status::find($filters['status_id']);
             if ($status) {
                 $labels['Estado'] = $status->name;
             }
         }
 
-        if (!empty($filters['priority_id'])) {
+        if (! empty($filters['priority_id'])) {
             $priority = Priority::find($filters['priority_id']);
             if ($priority) {
                 $labels['Prioridad'] = $priority->name;
             }
         }
 
-        if (!empty($filters['category_id'])) {
+        if (! empty($filters['category_id'])) {
             $category = Category::find($filters['category_id']);
             if ($category) {
                 $labels['Subsistema'] = $category->name;
             }
         }
 
-        if (!empty($filters['assigned_to'])) {
+        if (! empty($filters['assigned_to'])) {
             $user = User::find($filters['assigned_to']);
             if ($user) {
                 $labels['Especialista GTS'] = $user->name;
             }
         }
 
-        if (!empty($filters['reported_by'])) {
+        if (! empty($filters['reported_by'])) {
             $user = User::find($filters['reported_by']);
             if ($user) {
                 $labels['Reportante APOC'] = $user->name;
             }
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $labels['Término'] = "\"{$filters['search']}\"";
         }
 

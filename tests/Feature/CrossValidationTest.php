@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Incident;
 use App\Models\Priority;
-use App\Models\Role;
-use App\Models\Status;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -138,12 +136,13 @@ class CrossValidationTest extends TestCase
     public function test_sql_injection_payloads_in_search_and_filters_are_sanitized(): void
     {
         $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
+        $adminUser = User::where('email', 'admin@aifa.aero')->firstOrFail();
 
         // Inyecciones SQL clásicas tipo ' OR 1=1 --
         $sqlPayloads = [
             "' OR '1'='1",
             "'; DROP TABLE incidents; --",
-            "1 UNION SELECT null, null, null--",
+            '1 UNION SELECT null, null, null--',
             "admin'--",
             "' AND 1=0 UNION ALL SELECT @@version--",
         ];
@@ -156,8 +155,8 @@ class CrossValidationTest extends TestCase
             ]));
             $response->assertStatus(200);
 
-            // En bitácora de auditoría
-            $auditResponse = $this->actingAs($apocUser)->get(route('audit.index', [
+            // En bitácora de auditoría (exclusiva ADMIN)
+            $auditResponse = $this->actingAs($adminUser)->get(route('audit.index', [
                 'search' => $payload,
                 'folio' => $payload,
             ]));

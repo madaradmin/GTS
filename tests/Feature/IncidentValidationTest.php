@@ -20,7 +20,7 @@ class IncidentValidationTest extends TestCase
 
     public function test_store_incident_request_validates_required_fields(): void
     {
-        $request = new StoreIncidentRequest();
+        $request = new StoreIncidentRequest;
         $validator = Validator::make([], $request->rules(), $request->messages());
 
         $this->assertTrue($validator->fails());
@@ -44,7 +44,7 @@ class IncidentValidationTest extends TestCase
             'priority_id' => $priority->id,
         ];
 
-        $request = new StoreIncidentRequest();
+        $request = new StoreIncidentRequest;
         $validator = Validator::make($data, $request->rules(), $request->messages());
 
         $this->assertFalse($validator->fails());
@@ -53,9 +53,9 @@ class IncidentValidationTest extends TestCase
     public function test_assign_incident_request_requires_active_gts_user(): void
     {
         $apocUser = User::factory()->apoc()->create();
-        $gtsUser  = User::factory()->gts()->create(['is_active' => true]);
+        $gtsUser = User::factory()->gts()->create(['is_active' => true]);
 
-        $request = new AssignIncidentRequest();
+        $request = new AssignIncidentRequest;
 
         // 1. Asignar a usuario APOC debe fallar
         $v1 = Validator::make(['assigned_to_user_id' => $apocUser->id], $request->rules(), $request->messages());
@@ -69,7 +69,7 @@ class IncidentValidationTest extends TestCase
 
     public function test_resolve_incident_request_requires_minimum_length_solution(): void
     {
-        $request = new ResolveIncidentRequest();
+        $request = new ResolveIncidentRequest;
 
         // Solución muy corta (< 15 caracteres) debe fallar
         $v1 = Validator::make(['solution_description' => 'listo'], $request->rules(), $request->messages());
@@ -83,7 +83,7 @@ class IncidentValidationTest extends TestCase
 
     public function test_add_note_request_validates_content(): void
     {
-        $request = new AddNoteRequest();
+        $request = new AddNoteRequest;
 
         $v1 = Validator::make(['note' => 'ok'], $request->rules(), $request->messages());
         $this->assertTrue($v1->fails());
@@ -94,7 +94,7 @@ class IncidentValidationTest extends TestCase
 
     public function test_reject_resolution_request_requires_explanation(): void
     {
-        $request = new RejectResolutionRequest();
+        $request = new RejectResolutionRequest;
 
         $v1 = Validator::make(['rejection_reason' => 'sigue mal'], $request->rules(), $request->messages());
         $this->assertTrue($v1->fails());
@@ -103,4 +103,3 @@ class IncidentValidationTest extends TestCase
         $this->assertFalse($v2->fails());
     }
 }
-

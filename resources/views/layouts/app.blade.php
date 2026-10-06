@@ -18,7 +18,24 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="bg-brand-canvas text-brand-text-primary antialiased font-sans overflow-hidden selection:bg-brand-primary selection:text-white">
-        <div x-data="{ sidebarOpen: false }" class="flex h-screen w-screen flex-col overflow-hidden bg-brand-canvas">
+        <div 
+            x-data="{ 
+                sidebarHover: false,
+                hoverTimeout: null,
+                openSidebar() {
+                    clearTimeout(this.hoverTimeout);
+                    this.sidebarHover = true;
+                },
+                closeSidebar() {
+                    clearTimeout(this.hoverTimeout);
+                    this.hoverTimeout = setTimeout(() => {
+                        this.sidebarHover = false;
+                    }, 180);
+                }
+            }" 
+            @keydown.escape.window="sidebarHover = false;"
+            class="flex h-screen w-screen flex-col overflow-hidden bg-brand-canvas"
+        >
             
             <!-- 1. Barra Superior Completa (GTS + Logotipo Oficial AIFA + Buscador + Usuario) -->
             <x-topbar />

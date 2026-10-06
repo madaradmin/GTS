@@ -6,7 +6,6 @@ use App\Models\Category;
 use App\Models\Incident;
 use App\Models\IncidentAttachment;
 use App\Models\Priority;
-use App\Models\Role;
 use App\Models\Status;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,7 +26,7 @@ class SecurityHardeningTest extends TestCase
 
     public function test_http_security_headers_are_present_on_web_responses(): void
     {
-        $response = $this->get('/');
+        $response = $this->get('/login');
 
         $response->assertStatus(200);
         $response->assertHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -40,17 +39,18 @@ class SecurityHardeningTest extends TestCase
     public function test_inactive_user_cannot_authenticate_via_login(): void
     {
         $user = User::factory()->apoc()->inactive()->create([
+            'username' => 'inactivo',
             'email' => 'inactivo@aifa.aero',
             'password' => bcrypt('Password123!'),
         ]);
 
         $response = $this->post('/login', [
-            'email' => 'inactivo@aifa.aero',
+            'username' => 'inactivo',
             'password' => 'Password123!',
         ]);
 
         $this->assertGuest();
-        $response->assertSessionHasErrors('email');
+        $response->assertSessionHasErrors('username');
     }
 
     public function test_inactive_user_is_blocked_from_profile_routes(): void
@@ -217,12 +217,7 @@ class SecurityHardeningTest extends TestCase
         $inAttentionIncident = Incident::factory()->enAtencion($gtsUser)->create();
         $resolvedIncident = Incident::factory()->resuelta()->create();
 
-        // 1. GTS no puede crear incidencias
-        $this->actingAs($gtsUser)->post(route('incidents.store'), [
-            'title' => 'GTS intentando abrir ticket',
-        ])->assertStatus(403);
-
-        // 2. APOC no puede agregar notas técnicas
+        // 1. APOC no puede agregar notas técnicas
         $this->actingAs($apocUser)->post(route('incidents.add-note', $inAttentionIncident->folio), [
             'note' => 'Nota técnica no autorizada',
         ])->assertStatus(403);
@@ -232,9 +227,9 @@ class SecurityHardeningTest extends TestCase
             'solution_description' => 'APOC resolviendo sin visto de campo',
         ])->assertStatus(403);
 
-        // 4. GTS no puede cerrar incidencias
-        $this->actingAs($gtsUser)->post(route('incidents.close', $resolvedIncident->folio), [
-            'closing_notes' => 'GTS autoaprobando cierre',
+        // 4. No se puede cerrar una incidencia que no esté en estado RESUELTA (e.g. EN_ATENCION)
+        $this->actingAs($gtsUser)->post(route('incidents.close', $inAttentionIncident->folio), [
+            'comment' => 'Intento indebido de cierre en atención',
         ])->assertStatus(403);
 
         // 5. GTS no puede rechazar soluciones

@@ -4,9 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Incident;
-use App\Models\Priority;
-use App\Models\Role;
-use App\Models\Status;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -279,6 +276,7 @@ class CatalogInfrastructureTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee(route('catalogs.index'));
         $response->assertSee('Catálogos');
+        $response->assertDontSee('openCat');
+        $response->assertDontSee('• CCTV');
     }
 }
-

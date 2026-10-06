@@ -24,4 +24,3 @@ class PriorityFactory extends Factory
         ];
     }
 }
-

@@ -26,27 +26,22 @@ class AuditTest extends TestCase
         $response->assertRedirect('/login');
     }
 
-    public function test_authenticated_apoc_user_can_access_audit_log(): void
+    public function test_authenticated_apoc_user_cannot_access_audit_log(): void
     {
         $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
 
         $response = $this->actingAs($apocUser)->get('/auditoria');
 
-        $response->assertOk();
-        $response->assertViewIs('audit.index');
-        $response->assertViewHasAll(['histories', 'statistics', 'actions', 'users', 'filters']);
-        $response->assertSee('Bitácora General de Auditoría');
-        $response->assertSee('Append-Only');
+        $response->assertForbidden();
     }
 
-    public function test_authenticated_gts_user_can_access_audit_log(): void
+    public function test_authenticated_gts_user_cannot_access_audit_log(): void
     {
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
 
         $response = $this->actingAs($gtsUser)->get('/auditoria');
 
-        $response->assertOk();
-        $response->assertViewIs('audit.index');
+        $response->assertForbidden();
     }
 
     public function test_authenticated_admin_user_can_access_audit_log(): void
@@ -65,7 +60,7 @@ class AuditTest extends TestCase
 
         $response = $this->actingAs($inactiveUser)->get('/auditoria');
 
-        $response->assertForbidden();
+        $response->assertRedirect('/login');
     }
 
     public function test_incident_history_is_strictly_immutable_against_updates(): void
@@ -129,7 +124,8 @@ class AuditTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $response = $this->actingAs($apocUser)->get('/auditoria?action=RESOLUCION');
+        $adminUser = User::where('email', 'admin@aifa.aero')->firstOrFail();
+        $response = $this->actingAs($adminUser)->get('/auditoria?action=RESOLUCION');
 
         $response->assertOk();
         $response->assertSee('Solución técnica especial de prueba de filtrado.');
@@ -138,6 +134,7 @@ class AuditTest extends TestCase
 
     public function test_audit_log_filters_by_user(): void
     {
+        $adminUser = User::where('email', 'admin@aifa.aero')->firstOrFail();
         $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
         $incident = Incident::factory()->create();
@@ -158,7 +155,7 @@ class AuditTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $response = $this->actingAs($apocUser)->get("/auditoria?user_id={$apocUser->id}");
+        $response = $this->actingAs($adminUser)->get("/auditoria?user_id={$apocUser->id}");
 
         $response->assertOk();
         $response->assertSee('Cierre formal por APOC para prueba de usuario.');
@@ -167,6 +164,7 @@ class AuditTest extends TestCase
 
     public function test_audit_log_filters_by_search_term(): void
     {
+        $adminUser = User::where('email', 'admin@aifa.aero')->firstOrFail();
         $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
         $incident = Incident::factory()->create();
 
@@ -186,7 +184,7 @@ class AuditTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $response = $this->actingAs($apocUser)->get('/auditoria?search=TerminoTermicoCCTV991');
+        $response = $this->actingAs($adminUser)->get('/auditoria?search=TerminoTermicoCCTV991');
 
         $response->assertOk();
         $response->assertSee('TerminoTermicoCCTV991');
@@ -195,6 +193,7 @@ class AuditTest extends TestCase
 
     public function test_audit_log_filters_by_date_range(): void
     {
+        $adminUser = User::where('email', 'admin@aifa.aero')->firstOrFail();
         $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
         $incident = Incident::factory()->create();
 
@@ -214,7 +213,7 @@ class AuditTest extends TestCase
             'created_at' => '2026-05-15 12:00:00',
         ]);
 
-        $response = $this->actingAs($apocUser)->get('/auditoria?date_from=2026-05-01&date_to=2026-05-31');
+        $response = $this->actingAs($adminUser)->get('/auditoria?date_from=2026-05-01&date_to=2026-05-31');
 
         $response->assertOk();
         $response->assertSee('Evento en fecha activa del rango pericial.');
@@ -267,22 +266,27 @@ class AuditTest extends TestCase
         $response->assertSee('manage_history');
     }
 
-    public function test_sidebar_displays_auditoria_option_for_apoc_and_gts_profiles(): void
+    public function test_sidebar_does_not_display_auditoria_option_for_apoc_and_gts_profiles(): void
     {
         $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
+        $adminUser = User::where('email', 'admin@aifa.aero')->firstOrFail();
 
-        // APOC ve Auditoría en el sidebar
+        // APOC no ve Auditoría en el sidebar
         $responseApoc = $this->actingAs($apocUser)->get(route('dashboard'));
         $responseApoc->assertOk();
-        $responseApoc->assertSee(route('audit.index'));
-        $responseApoc->assertSee('Auditoría');
+        $responseApoc->assertDontSee(route('audit.index'));
 
-        // GTS ve Auditoría en el sidebar
+        // GTS no ve Auditoría en el sidebar
         $responseGts = $this->actingAs($gtsUser)->get(route('dashboard'));
         $responseGts->assertOk();
-        $responseGts->assertSee(route('audit.index'));
-        $responseGts->assertSee('Auditoría');
+        $responseGts->assertDontSee(route('audit.index'));
+
+        // ADMIN sí ve Auditoría en el sidebar
+        $responseAdmin = $this->actingAs($adminUser)->get(route('dashboard'));
+        $responseAdmin->assertOk();
+        $responseAdmin->assertSee(route('audit.index'));
+        $responseAdmin->assertSee('Auditoría');
     }
 
     public function test_audit_index_displays_navigable_breadcrumbs(): void
@@ -298,4 +302,3 @@ class AuditTest extends TestCase
         $response->assertSee('Bitácora Pericial');
     }
 }
-

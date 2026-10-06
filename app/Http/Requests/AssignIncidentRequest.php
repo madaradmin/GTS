@@ -2,8 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class AssignIncidentRequest extends FormRequest
 {
@@ -22,20 +23,33 @@ class AssignIncidentRequest extends FormRequest
     /**
      * Reglas de validación para asignación de incidencia.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
             'assigned_to_user_id' => [
                 'required',
-                'integer',
-                Rule::exists('users', 'id')->where(function ($query) {
-                    $query->where('is_active', true)
-                          ->whereIn('role_id', function ($sub) {
-                              $sub->select('id')->from('roles')->where('slug', 'gts');
-                          });
-                }),
+                function ($attribute, $value, $fail) {
+                    if (strtolower((string) $value) === 'tics') {
+                        return;
+                    }
+
+                    if (! is_numeric($value)) {
+                        $fail('El técnico seleccionado no existe, no pertenece a GTS o se encuentra inactivo.');
+
+                        return;
+                    }
+
+                    $exists = User::where('id', $value)
+                        ->where('is_active', true)
+                        ->whereHas('role', fn ($q) => $q->where('slug', 'gts'))
+                        ->exists();
+
+                    if (! $exists) {
+                        $fail('El técnico seleccionado no existe, no pertenece a GTS o se encuentra inactivo.');
+                    }
+                },
             ],
             'comment' => ['nullable', 'string', 'max:500'],
         ];

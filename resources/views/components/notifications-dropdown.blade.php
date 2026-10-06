@@ -1,9 +1,26 @@
 @php
     $user = auth()->user();
-    $unreadCount = $user ? $user->unreadNotifications()->count() : 0;
-    $notifications = $user 
-        ? $user->notifications()->take(15)->get() 
+    $rawNotifications = $user 
+        ? $user->notifications()->take(30)->get() 
         : collect();
+
+    // Filtrar de forma defensiva notificaciones de expedientes que ya no existen en el sistema
+    $notifications = $rawNotifications->filter(function ($notif) {
+        $data = $notif->data ?? [];
+        $folio = $data['folio'] ?? null;
+        $incidentId = $data['incident_id'] ?? null;
+
+        if ($folio && !\App\Models\Incident::where('folio', $folio)->exists()) {
+            return false;
+        }
+        if ($incidentId && !\App\Models\Incident::where('id', $incidentId)->exists()) {
+            return false;
+        }
+
+        return true;
+    })->take(15);
+
+    $unreadCount = $notifications->whereNull('read_at')->count();
 @endphp
 
 <div 
@@ -65,6 +82,7 @@
     <!-- Panel Flotante / Dropdown de Notificaciones -->
     <div 
         x-show="openNotif"
+        x-cloak
         @click.away="openNotif = false"
         x-transition:enter="transition ease-out duration-150"
         x-transition:enter-start="transform opacity-0 scale-95 -translate-y-1"

@@ -8,7 +8,6 @@ use App\Models\IncidentHistory;
 use App\Models\Priority;
 use App\Models\Status;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
 class DashboardService
@@ -16,34 +15,49 @@ class DashboardService
     /**
      * Calcula las métricas operacionales del turno y período seleccionado para el APOC y GTS.
      *
-     * @param string $period 'today' | '24h' | 'week'
+     * @param  string  $period  'today' | '24h' | 'week'
      * @return array<string, mixed>
      */
-    public function getMetrics(string $period = 'today'): array
+    /**
+     * Calcula las métricas operacionales del turno y período seleccionado para el APOC y GTS.
+     *
+     * @param  string  $period  'today' | '24h' | 'week'
+     * @return array<string, mixed>
+     */
+    public function getMetrics(string $period = 'today', ?User $user = null): array
     {
         [$startDate, $endDate] = $this->resolveDateRange($period);
 
+        $baseIncident = Incident::query()->forUserScope($user);
+
         // 1. Incidencias Abiertas (Activas en curso)
-        $openQuery = Incident::whereHas('status', function ($q) {
+        $openQuery = (clone $baseIncident)->whereHas('status', function ($q) {
             $q->whereIn('code', ['NUEVA', 'ASIGNADA', 'EN_ATENCION']);
         });
 
         $totalOpen = (clone $openQuery)->count();
-        $openCritical = (clone $openQuery)->whereHas('priority', fn($q) => $q->where('slug', 'critica'))->count();
-        $openHigh = (clone $openQuery)->whereHas('priority', fn($q) => $q->where('slug', 'alta'))->count();
+        $openCritical = (clone $openQuery)->whereHas('priority', fn ($q) => $q->where('slug', 'critica'))->count();
+        $openHigh = (clone $openQuery)->whereHas('priority', fn ($q) => $q->where('slug', 'alta'))->count();
 
-        // 2. En Atención Técnica Activa (GTS en campo o consola)
-        $inAttention = Incident::whereHas('status', fn($q) => $q->where('code', 'EN_ATENCION'))->count();
+        // 2. Indicadores Operacionales Principales desde PostgreSQL
+        $total = (clone $baseIncident)->count();
+        $new = (clone $baseIncident)->whereHas('status', fn ($q) => $q->where('code', 'NUEVA'))->count();
+        $inProcess = (clone $baseIncident)->whereHas('status', fn ($q) => $q->whereIn('code', ['ASIGNADA', 'EN_ATENCION']))->count();
+        $resolved = (clone $baseIncident)->whereHas('status', fn ($q) => $q->whereIn('code', ['RESUELTA', 'CERRADA']))->count();
+        $critical = (clone $openQuery)->whereHas('priority', fn ($q) => $q->where('slug', 'critica'))->count();
 
-        // 3. Resueltas en el período y pendientes de VoBo por APOC
-        $resolvedInPeriod = Incident::whereHas('status', fn($q) => $q->whereIn('code', ['RESUELTA', 'CERRADA']))
+        // 3. En Atención Técnica Activa (GTS en consola o campo)
+        $inAttention = (clone $baseIncident)->whereHas('status', fn ($q) => $q->where('code', 'EN_ATENCION'))->count();
+
+        // 4. Resueltas en el período y pendientes de VoBo por APOC
+        $resolvedInPeriod = (clone $baseIncident)->whereHas('status', fn ($q) => $q->whereIn('code', ['RESUELTA', 'CERRADA']))
             ->whereBetween('resolved_at', [$startDate, $endDate])
             ->count();
 
-        $pendingVoBo = Incident::whereHas('status', fn($q) => $q->where('code', 'RESUELTA'))->count();
+        $pendingVoBo = (clone $baseIncident)->whereHas('status', fn ($q) => $q->where('code', 'RESUELTA'))->count();
 
-        // 4. Tiempo Promedio de Atención Técnica / MTTR (en minutos)
-        $resolvedIncidents = Incident::whereNotNull('resolved_at')
+        // 5. Tiempo Promedio de Atención Técnica / MTTR (en minutos)
+        $resolvedIncidents = (clone $baseIncident)->whereNotNull('resolved_at')
             ->whereNotNull('created_at')
             ->whereBetween('resolved_at', [$startDate, $endDate])
             ->get();
@@ -55,9 +69,9 @@ class DashboardService
             $mttrMinutes = (int) round($totalMinutes / $resolvedIncidents->count());
         } else {
             // Fallback histórico general si no hay resueltas en la ventana actual
-            $allResolved = Incident::whereNotNull('resolved_at')->take(20)->get();
+            $allResolved = (clone $baseIncident)->whereNotNull('resolved_at')->take(20)->get();
             if ($allResolved->isNotEmpty()) {
-                $totalMinutes = $allResolved->sum(fn(Incident $i) => $i->created_at->diffInMinutes($i->resolved_at));
+                $totalMinutes = $allResolved->sum(fn (Incident $i) => $i->created_at->diffInMinutes($i->resolved_at));
                 $mttrMinutes = (int) round($totalMinutes / $allResolved->count());
             } else {
                 $mttrMinutes = 18; // Promedio estándar referencial AIFA
@@ -68,6 +82,11 @@ class DashboardService
 
         return [
             'period' => $period,
+            'total' => $total,
+            'new' => $new,
+            'in_process' => $inProcess,
+            'resolved' => $resolved,
+            'critical' => $critical,
             'total_open' => $totalOpen,
             'open_critical' => $openCritical,
             'open_high' => $openHigh,
@@ -81,45 +100,47 @@ class DashboardService
 
     /**
      * Obtiene el listado de incidencias prioritarias y recientes (Columna Izquierda 65%).
-     *
-     * @param int $limit
-     * @return Collection
      */
-    public function getRecentIncidents(int $limit = 6): Collection
+    public function getRecentIncidents(int $limit = 6, ?User $user = null): Collection
     {
-        return Incident::with([
+        $query = Incident::with([
             'category',
             'priority',
             'status',
             'assignedTo',
-            'reportedBy',
-        ])
-            ->orderBy('created_at', 'desc')
+            'reportedBy.role',
+        ]);
+
+        $query->forUserScope($user);
+
+        return $query->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->take($limit)
             ->get();
     }
 
     /**
      * Obtiene la cola de atención inmediata con tickets críticos o altos activos (Columna Derecha 35%).
-     *
-     * @param int $limit
-     * @return Collection
      */
-    public function getImmediateAttentionQueue(int $limit = 3): Collection
+    public function getImmediateAttentionQueue(int $limit = 3, ?User $user = null): Collection
     {
-        return Incident::with([
+        $query = Incident::with([
             'category',
             'priority',
             'status',
             'assignedTo',
+            'reportedBy.role',
         ])
             ->whereHas('status', function ($q) {
                 $q->whereIn('code', ['NUEVA', 'ASIGNADA', 'EN_ATENCION']);
             })
             ->whereHas('priority', function ($q) {
                 $q->whereIn('slug', ['critica', 'alta']);
-            })
-            ->join('priorities', 'incidents.priority_id', '=', 'priorities.id')
+            });
+
+        $query->forUserScope($user);
+
+        return $query->join('priorities', 'incidents.priority_id', '=', 'priorities.id')
             ->orderByDesc('priorities.level')
             ->orderBy('incidents.created_at', 'asc')
             ->select('incidents.*')
@@ -132,20 +153,22 @@ class DashboardService
      *
      * @return array<string, mixed>
      */
-    public function getCategoryDistribution(): array
+    public function getCategoryDistribution(?User $user = null): array
     {
         $categories = Category::where('is_active', true)->get();
 
-        $activeIncidentsTotal = Incident::whereHas('status', function ($q) {
+        $activeQuery = Incident::whereHas('status', function ($q) {
             $q->whereIn('code', ['NUEVA', 'ASIGNADA', 'EN_ATENCION']);
-        })->count();
+        });
+
+        $activeQuery->forUserScope($user);
+
+        $activeIncidentsTotal = (clone $activeQuery)->count();
 
         $distribution = [];
 
         foreach ($categories as $cat) {
-            $count = Incident::where('category_id', $cat->id)
-                ->whereHas('status', fn($q) => $q->whereIn('code', ['NUEVA', 'ASIGNADA', 'EN_ATENCION']))
-                ->count();
+            $count = (clone $activeQuery)->where('category_id', $cat->id)->count();
 
             $percentage = $activeIncidentsTotal > 0
                 ? (int) round(($count / $activeIncidentsTotal) * 100)
@@ -173,7 +196,7 @@ class DashboardService
      */
     public function getActiveTechniciansCount(): int
     {
-        return User::whereHas('role', fn($q) => $q->where('slug', 'gts'))
+        return User::whereHas('role', fn ($q) => $q->where('slug', 'gts'))
             ->where('is_active', true)
             ->count();
     }
@@ -217,17 +240,17 @@ class DashboardService
      *
      * @return array<string, mixed>
      */
-    public function getPrioritiesBreakdown(): array
+    public function getPrioritiesBreakdown(?User $user = null): array
     {
         $priorities = Priority::orderBy('level', 'desc')->get();
         $activeStatusIds = Status::whereIn('code', ['NUEVA', 'ASIGNADA', 'EN_ATENCION'])->pluck('id');
-        $totalActive = Incident::whereIn('status_id', $activeStatusIds)->count();
+        $activeQuery = Incident::whereIn('status_id', $activeStatusIds)->forUserScope($user);
+
+        $totalActive = (clone $activeQuery)->count();
 
         $items = [];
         foreach ($priorities as $p) {
-            $count = Incident::where('priority_id', $p->id)
-                ->whereIn('status_id', $activeStatusIds)
-                ->count();
+            $count = (clone $activeQuery)->where('priority_id', $p->id)->count();
 
             $percentage = $totalActive > 0 ? (int) round(($count / $totalActive) * 100) : 0;
 
@@ -248,15 +271,104 @@ class DashboardService
 
     /**
      * Obtiene los últimos eventos periciales de auditoría para la timeline de actividad en vivo.
-     *
-     * @param int $limit
-     * @return Collection
      */
-    public function getRecentActivities(int $limit = 4): Collection
+    public function getRecentActivities(int $limit = 4, ?User $user = null): Collection
     {
-        return IncidentHistory::with(['incident', 'user'])
-            ->latest('id')
+        $query = IncidentHistory::with(['incident', 'user']);
+
+        if ($user && ! $user->isAdmin() && ! $user->isGts()) {
+            $query->whereHas('incident', fn ($q) => $q->forUserScope($user));
+        }
+
+        return $query->latest('id')
             ->take($limit)
             ->get();
+    }
+
+    /**
+     * Monitoreo operacional en tiempo real de la infraestructura tecnológica (Catálogos).
+     * Calcula dinámicamente el porcentaje y estado de operatividad de los sistemas registrados.
+     *
+     * @return array<string, mixed>
+     */
+    public function getSystemsHealth(): array
+    {
+        $total = Category::count();
+        $active = Category::where('status', 'ACTIVO')->count();
+
+        if ($total === 0) {
+            return [
+                'total' => 0,
+                'active' => 0,
+                'percentage' => 0.0,
+                'state' => null,
+                'state_label' => 'Sin datos',
+                'color' => '#707B8A',
+                'badge_bg' => 'rgba(112, 123, 138, 0.15)',
+                'badge_border' => 'rgba(112, 123, 138, 0.3)',
+                'systems' => [],
+            ];
+        }
+
+        $percentage = (float) round(($active / $total) * 100, 1);
+
+        if ($percentage >= 95.0) {
+            $state = 'ÓPTIMO';
+            $color = '#20C997';
+            $badgeBg = 'rgba(32, 201, 151, 0.15)';
+            $badgeBorder = 'rgba(32, 201, 151, 0.3)';
+        } elseif ($percentage >= 80.0) {
+            $state = 'INTERMITENTE';
+            $color = '#E0A21A';
+            $badgeBg = 'rgba(224, 162, 26, 0.15)';
+            $badgeBorder = 'rgba(224, 162, 26, 0.3)';
+        } else {
+            $state = 'CRÍTICO';
+            $color = '#D83B52';
+            $badgeBg = 'rgba(216, 59, 82, 0.15)';
+            $badgeBorder = 'rgba(216, 59, 82, 0.3)';
+        }
+
+        $categories = Category::orderBy('name')->get();
+
+        $systems = $categories->map(function (Category $cat) {
+            $status = $cat->status ?: ($cat->is_active ? 'ACTIVO' : 'INACTIVO');
+
+            $statusLabel = match ($status) {
+                'ACTIVO' => 'Operativo',
+                'INACTIVO' => 'Inactivo',
+                'FUERA DE SERVICIO' => 'Fuera de servicio',
+                default => 'Operativo',
+            };
+
+            $statusColor = match ($status) {
+                'ACTIVO' => '#20C997',
+                'INACTIVO' => '#E0A21A',
+                'FUERA DE SERVICIO' => '#D83B52',
+                default => '#20C997',
+            };
+
+            return [
+                'id' => $cat->id,
+                'name' => $cat->name,
+                'code' => $cat->code,
+                'icon' => $cat->icon ?: 'hub',
+                'status' => $status,
+                'status_label' => $statusLabel,
+                'status_color' => $statusColor,
+            ];
+        })->all();
+
+        return [
+            'total' => $total,
+            'active' => $active,
+            'percentage' => $percentage,
+            'state' => $state,
+            'state_label' => $state,
+            'color' => $color,
+            'badge_bg' => $badgeBg,
+            'badge_border' => $badgeBorder,
+            'systems' => $systems,
+        ];
     }
 }

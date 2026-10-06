@@ -35,7 +35,7 @@ class RoleMiddlewareTest extends TestCase
         $response = $this->actingAs($user)->get('/test-apoc-route');
 
         $response->assertRedirect('/login');
-        $response->assertSessionHasErrors('email');
+        $response->assertSessionHasErrors('username');
         $this->assertGuest();
     }
 
@@ -45,14 +45,14 @@ class RoleMiddlewareTest extends TestCase
 
         // Acceso permitido a ruta APOC
         $this->actingAs($apocUser)
-             ->get('/test-apoc-route')
-             ->assertStatus(200)
-             ->assertSee('OK APOC');
+            ->get('/test-apoc-route')
+            ->assertStatus(200)
+            ->assertSee('OK APOC');
 
         // Acceso denegado a ruta GTS
         $this->actingAs($apocUser)
-             ->get('/test-gts-route')
-             ->assertStatus(403);
+            ->get('/test-gts-route')
+            ->assertStatus(403);
     }
 
     public function test_gts_user_can_access_gts_route_but_not_apoc_route(): void
@@ -61,14 +61,14 @@ class RoleMiddlewareTest extends TestCase
 
         // Acceso permitido a ruta GTS
         $this->actingAs($gtsUser)
-             ->get('/test-gts-route')
-             ->assertStatus(200)
-             ->assertSee('OK GTS');
+            ->get('/test-gts-route')
+            ->assertStatus(200)
+            ->assertSee('OK GTS');
 
         // Acceso denegado a ruta APOC
         $this->actingAs($gtsUser)
-             ->get('/test-apoc-route')
-             ->assertStatus(403);
+            ->get('/test-apoc-route')
+            ->assertStatus(403);
     }
 
     public function test_admin_has_universal_access_to_all_role_routes(): void
@@ -76,16 +76,15 @@ class RoleMiddlewareTest extends TestCase
         $adminUser = User::factory()->admin()->create();
 
         $this->actingAs($adminUser)
-             ->get('/test-apoc-route')
-             ->assertStatus(200);
+            ->get('/test-apoc-route')
+            ->assertStatus(200);
 
         $this->actingAs($adminUser)
-             ->get('/test-gts-route')
-             ->assertStatus(200);
+            ->get('/test-gts-route')
+            ->assertStatus(200);
 
         $this->actingAs($adminUser)
-             ->get('/test-shared-route')
-             ->assertStatus(200);
+            ->get('/test-shared-route')
+            ->assertStatus(200);
     }
 }
-

@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Incident;
 use App\Models\Priority;
-use App\Models\Status;
 use App\Models\User;
 use App\Services\DashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -202,4 +201,3 @@ class DashboardTest extends TestCase
         $this->assertTrue($metrics['mttr_within_target']); // 20 <= 25
     }
 }
-

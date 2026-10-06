@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Category;
-use App\Models\Incident;
 use App\Models\Priority;
 use App\Models\User;
 use App\Services\IncidentService;
@@ -118,8 +117,8 @@ class NotificationSystemTest extends TestCase
         $response->assertJsonStructure([
             'unread_count',
             'notifications' => [
-                '*' => ['id', 'type', 'title', 'message', 'action_url', 'folio', 'icon', 'level', 'read', 'created_at']
-            ]
+                '*' => ['id', 'type', 'title', 'message', 'action_url', 'folio', 'icon', 'level', 'read', 'created_at'],
+            ],
         ]);
         $this->assertEquals(1, $response->json('unread_count'));
     }

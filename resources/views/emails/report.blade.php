@@ -163,7 +163,7 @@
                     </div>
                     <div class="meta-row">
                         <div class="meta-label">Fecha y Hora:</div>
-                        <div class="meta-val">{{ \Carbon\Carbon::now('America/Mexico_City')->format('d/m/Y H:i:s') }} hrs</div>
+                        <div class="meta-val">{{ now()->format('d/m/Y H:i:s') }} hrs</div>
                     </div>
                     @foreach($appliedFilters as $label => $val)
                         <div class="meta-row">

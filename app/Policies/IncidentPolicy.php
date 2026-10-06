@@ -17,19 +17,41 @@ class IncidentPolicy
 
     /**
      * Determina si el usuario puede consultar el expediente de una incidencia.
+     * APOC-CCO y APOC-CSA pueden consultar incidencias pertenecientes a su mismo rol/ámbito operativo.
+     * GTS y Administrador tienen visibilidad global.
      */
     public function view(User $user, Incident $incident): bool
     {
-        return $user->is_active;
+        if (! $user->is_active) {
+            return false;
+        }
+
+        if ($user->isAdmin() || $user->isGts()) {
+            return true;
+        }
+
+        if ($user->isApocCco()) {
+            return $incident->isFromCco();
+        }
+
+        if ($user->isApocCsa()) {
+            return $incident->isFromCsa();
+        }
+
+        if ($user->isApoc()) {
+            return (int) $incident->reported_by_user_id === (int) $user->id;
+        }
+
+        return false;
     }
 
     /**
      * Determina si el usuario puede crear/despachar una nueva incidencia.
-     * Solo APOC y Administrador tienen la facultad de abrir tickets.
+     * APOC, GTS y Administrador tienen la facultad de abrir tickets.
      */
     public function create(User $user): bool
     {
-        return $user->is_active && ($user->isApoc() || $user->isAdmin());
+        return $user->is_active && ($user->isApoc() || $user->isGts() || $user->isAdmin());
     }
 
     /**
@@ -39,7 +61,7 @@ class IncidentPolicy
      */
     public function assign(User $user, Incident $incident): bool
     {
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             return false;
         }
 
@@ -55,7 +77,7 @@ class IncidentPolicy
      */
     public function startAttention(User $user, Incident $incident): bool
     {
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             return false;
         }
 
@@ -71,7 +93,7 @@ class IncidentPolicy
      */
     public function addNote(User $user, Incident $incident): bool
     {
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             return false;
         }
 
@@ -85,7 +107,7 @@ class IncidentPolicy
      */
     public function resolve(User $user, Incident $incident): bool
     {
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             return false;
         }
 
@@ -94,11 +116,15 @@ class IncidentPolicy
 
     /**
      * Determina si el usuario puede rechazar la solución y devolver a atención técnica.
-     * Solo personal APOC o Admin cuando la incidencia está en estado RESUELTA.
+     * Solo personal APOC o Admin cuando la incidencia está en estado RESUELTA y tienen acceso al ticket.
      */
     public function rejectResolution(User $user, Incident $incident): bool
     {
-        if (!$user->is_active) {
+        if (! $user->is_active) {
+            return false;
+        }
+
+        if (! $this->view($user, $incident)) {
             return false;
         }
 
@@ -107,16 +133,20 @@ class IncidentPolicy
 
     /**
      * Determina si el usuario puede dar el visto bueno y CERRAR la incidencia.
-     * Segregación de funciones estricta: GTS no puede auto-aprobarse el cierre.
-     * Solo APOC o Admin pueden cerrar un ticket que esté previamente RESUELTO.
+     * Permitido a personal APOC (respetando confidencialidad CCO/CSA), GTS y Administrador
+     * cuando la incidencia está previamente en estado RESUELTA.
      */
     public function close(User $user, Incident $incident): bool
     {
-        if (!$user->is_active) {
+        if (! $user->is_active) {
             return false;
         }
 
-        return ($user->isApoc() || $user->isAdmin()) && $incident->status->code === 'RESUELTA';
+        if (! $this->view($user, $incident)) {
+            return false;
+        }
+
+        return ($user->isApoc() || $user->isGts() || $user->isAdmin()) && $incident->status->code === 'RESUELTA';
     }
 
     /**
@@ -124,33 +154,33 @@ class IncidentPolicy
      */
     public function downloadAttachment(User $user, Incident $incident): bool
     {
-        return $user->is_active;
+        return $this->view($user, $incident);
     }
 
     /**
      * Determina si el usuario puede cargar nuevas evidencias a la incidencia.
-     * Permitido a usuarios activos cuando la incidencia no está cerrada e inmutable.
+     * Permitido a usuarios activos cuando la incidencia no está cerrada e inmutable y tienen acceso al ticket.
      */
     public function uploadAttachment(User $user, Incident $incident): bool
     {
-        return $user->is_active && $incident->status->code !== 'CERRADA';
+        return $this->view($user, $incident) && $incident->status->code !== 'CERRADA';
     }
 
     /**
      * Determina si el usuario puede consultar la bitácora pericial de auditoría.
-     * Acceso completo al Administrador y visibilidad pericial a perfiles activos APOC y GTS.
+     * Acceso reservado exclusivamente al Administrador del Sistema.
      */
     public function viewAudit(User $user): bool
     {
-        return $user->is_active;
+        return $user->is_active && $user->isAdmin();
     }
 
     /**
-     * Eliminación de incidencias prohibida por normativa aeronáutica.
+     * Determina si el usuario puede eliminar definitivamente una incidencia.
+     * Exclusivo para el Administrador del Sistema bajo confirmación y auditoría pericial (Fase 4).
      */
     public function delete(User $user, Incident $incident): bool
     {
-        return false;
+        return $user->is_active && $user->isAdmin();
     }
 }
-

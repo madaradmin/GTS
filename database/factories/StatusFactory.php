@@ -23,4 +23,3 @@ class StatusFactory extends Factory
         ];
     }
 }
-

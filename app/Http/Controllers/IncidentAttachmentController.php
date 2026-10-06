@@ -50,7 +50,7 @@ class IncidentAttachmentController extends Controller
         Gate::authorize('downloadAttachment', $incident);
 
         abort_if($attachment->incident_id !== $incident->id, 404, 'La evidencia no pertenece a este expediente.');
-        abort_if(!$this->fileStorageService->exists($attachment), 404, 'El archivo físico no se encuentra disponible.');
+        abort_if(! $this->fileStorageService->exists($attachment), 404, 'El archivo físico no se encuentra disponible.');
 
         return $this->fileStorageService->streamInline($attachment);
     }
@@ -63,9 +63,8 @@ class IncidentAttachmentController extends Controller
         Gate::authorize('downloadAttachment', $incident);
 
         abort_if($attachment->incident_id !== $incident->id, 404, 'La evidencia no pertenece a este expediente.');
-        abort_if(!$this->fileStorageService->exists($attachment), 404, 'El archivo físico no se encuentra disponible.');
+        abort_if(! $this->fileStorageService->exists($attachment), 404, 'El archivo físico no se encuentra disponible.');
 
         return $this->fileStorageService->download($attachment);
     }
 }
-

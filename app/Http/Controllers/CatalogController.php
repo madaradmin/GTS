@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
-use App\Models\Incident;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -27,8 +26,8 @@ class CatalogController extends Controller
         $outOfService = Category::where('status', 'FUERA DE SERVICIO')->count();
         $inactiveInfrastructure = Category::where('status', 'INACTIVO')->count();
 
-        $availabilityRate = $totalInfrastructure > 0 
-            ? round(($activeInfrastructure / $totalInfrastructure) * 100, 1) 
+        $availabilityRate = $totalInfrastructure > 0
+            ? round(($activeInfrastructure / $totalInfrastructure) * 100, 1)
             : 100.0;
 
         // 2. Gráficas Operativas (Máximo 3, respondiendo preguntas de ingeniería y soporte)
@@ -36,6 +35,7 @@ class CatalogController extends Controller
         $categoriesList = Category::orderBy('name')->get();
         $distributionData = $categoriesList->map(function (Category $cat) use ($totalInfrastructure) {
             $percentage = $totalInfrastructure > 0 ? round((1 / $totalInfrastructure) * 100, 1) : 0;
+
             return [
                 'id' => $cat->id,
                 'name' => $cat->name,
@@ -72,6 +72,7 @@ class CatalogController extends Controller
         $incidentsByInfrastructure = $categoriesList->map(function (Category $cat) {
             $totalInc = $cat->incidents()->count();
             $activeInc = $cat->activeIncidents()->count();
+
             return [
                 'name' => $cat->name,
                 'color' => $cat->color ?: '#3D82C6',
@@ -84,21 +85,21 @@ class CatalogController extends Controller
         // 3. Consulta y filtrado de la tabla de inventario
         $query = Category::withCount(['incidents', 'activeIncidents']);
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = trim($filters['search']);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('code', 'LIKE', "%{$search}%")
-                  ->orWhere('location', 'LIKE', "%{$search}%")
-                  ->orWhere('description', 'LIKE', "%{$search}%");
+                    ->orWhere('code', 'LIKE', "%{$search}%")
+                    ->orWhere('location', 'LIKE', "%{$search}%")
+                    ->orWhere('description', 'LIKE', "%{$search}%");
             });
         }
 
-        if (!empty($filters['category'])) {
+        if (! empty($filters['category'])) {
             $query->where('slug', $filters['category']);
         }
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
@@ -147,9 +148,9 @@ class CatalogController extends Controller
             $counter++;
         }
 
-        $code = !empty($validated['code']) 
-            ? strtoupper(trim($validated['code'])) 
-            : 'INF-' . strtoupper(Str::limit(Str::slug($validated['name'], ''), 6, ''));
+        $code = ! empty($validated['code'])
+            ? strtoupper(trim($validated['code']))
+            : 'INF-'.strtoupper(Str::limit(Str::slug($validated['name'], ''), 6, ''));
 
         $category = Category::create([
             'name' => $validated['name'],
@@ -175,8 +176,8 @@ class CatalogController extends Controller
         Gate::authorize('update', $category);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:100', 'unique:categories,name,' . $category->id],
-            'code' => ['nullable', 'string', 'max:50', 'unique:categories,code,' . $category->id],
+            'name' => ['required', 'string', 'max:100', 'unique:categories,name,'.$category->id],
+            'code' => ['nullable', 'string', 'max:50', 'unique:categories,code,'.$category->id],
             'description' => ['nullable', 'string', 'max:1000'],
             'location' => ['nullable', 'string', 'max:255'],
             'technical_specs' => ['nullable', 'string', 'max:2000'],
@@ -185,8 +186,8 @@ class CatalogController extends Controller
             'status' => ['required', 'in:ACTIVO,INACTIVO,FUERA DE SERVICIO'],
         ]);
 
-        $code = !empty($validated['code']) 
-            ? strtoupper(trim($validated['code'])) 
+        $code = ! empty($validated['code'])
+            ? strtoupper(trim($validated['code']))
             : $category->code;
 
         $category->update([

@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ocultar preventivamente componentes Alpine antes de su inicialización (Anti-FOUC) */
+[x-cloak] {
+    display: none !important;
+}
+
 @layer base {
     :root {
         /* Paleta Centralizada GTS — Grupo de Seguridad Tecnológica */

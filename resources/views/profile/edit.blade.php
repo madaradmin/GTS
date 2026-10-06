@@ -1,6 +1,30 @@
 <x-app-layout>
     <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
         
+        @if(auth()->user()->isAdmin())
+            <!-- Pestañas de Navegación de Configuración -->
+            <div class="flex items-center gap-2 border-b border-[#263241] pb-1">
+                <a 
+                    href="{{ route('profile.edit') }}" 
+                    class="px-4 py-2 text-xs font-semibold rounded-t-xl bg-[#11151B] border-t border-x border-[#263241] text-[#3D82C6]"
+                >
+                    <span class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]">account_circle</span>
+                        <span>Mi Cuenta</span>
+                    </span>
+                </a>
+                <a 
+                    href="{{ route('users.index') }}" 
+                    class="px-4 py-2 text-xs font-semibold rounded-t-xl transition-colors text-[#8D98A8] hover:text-[#F2F5F8] hover:bg-[#101923]"
+                >
+                    <span class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]">group</span>
+                        <span>Gestión de Usuarios y Cuadrillas</span>
+                    </span>
+                </a>
+            </div>
+        @endif
+
         <!-- Encabezado de Perfil Operativo -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-brand-border">
             <div class="flex flex-col">
@@ -19,13 +43,6 @@
         </div>
 
         <div class="grid grid-cols-1 gap-6">
-            <!-- Estado de Turno y Disponibilidad Operacional (GTS / Operadores) -->
-            <div class="p-6 bg-brand-surface border border-brand-border rounded-xl shadow-enterprise">
-                <div class="max-w-xl">
-                    @include('profile.partials.update-shift-status-form')
-                </div>
-            </div>
-
             <!-- Información del Perfil -->
             <div class="p-6 bg-brand-surface border border-brand-border rounded-xl shadow-enterprise">
                 <div class="max-w-xl">
@@ -40,12 +57,14 @@
                 </div>
             </div>
 
-            <!-- Zona de Riesgo / Baja de Cuenta -->
-            <div class="p-6 bg-brand-surface border border-[#D83B52]/20 rounded-xl shadow-enterprise bg-[#D83B52]/[0.02]">
-                <div class="max-w-xl">
-                    @include('profile.partials.delete-user-form')
+            @if(auth()->user()->isAdmin())
+                <!-- Zona de Riesgo / Baja de Cuenta -->
+                <div class="p-6 bg-brand-surface border border-[#D83B52]/20 rounded-xl shadow-enterprise bg-[#D83B52]/[0.02]">
+                    <div class="max-w-xl">
+                        @include('profile.partials.delete-user-form')
+                    </div>
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

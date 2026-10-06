@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class IncidentFactory extends Factory
 {
     protected $model = Incident::class;
+
     protected static int $folioCounter = 200;
 
     public function definition(): array
@@ -157,4 +158,3 @@ class IncidentFactory extends Factory
         ]);
     }
 }
-

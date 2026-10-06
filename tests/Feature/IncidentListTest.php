@@ -22,16 +22,25 @@ class IncidentListTest extends TestCase
 
     public function test_guest_is_redirected_to_login_when_accessing_incident_list(): void
     {
-        $response = $this->get('/incidencias');
+        $response = $this->get('/Todas las incidencias');
 
         $response->assertRedirect('/login');
+    }
+
+    public function test_legacy_incidencias_url_redirects_to_todas_las_incidencias(): void
+    {
+        $user = User::where('email', 'apoc@aifa.aero')->firstOrFail();
+
+        $response = $this->actingAs($user)->get('/incidencias?search=INC-2026-0888');
+
+        $response->assertRedirect('/Todas%20las%20incidencias?search=INC-2026-0888');
     }
 
     public function test_apoc_user_can_access_incident_list_and_sees_new_button(): void
     {
         $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
 
-        $response = $this->actingAs($apocUser)->get('/incidencias');
+        $response = $this->actingAs($apocUser)->get('/Todas las incidencias');
 
         $response->assertOk();
         $response->assertSee('Todas las Incidencias');
@@ -39,23 +48,23 @@ class IncidentListTest extends TestCase
         $response->assertViewHas(['incidents', 'categories', 'priorities', 'statuses', 'metrics']);
     }
 
-    public function test_gts_user_can_access_incident_list_but_cannot_see_new_incident_button(): void
+    public function test_gts_user_can_access_incident_list_and_sees_new_incident_button(): void
     {
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
 
-        $response = $this->actingAs($gtsUser)->get('/incidencias');
+        $response = $this->actingAs($gtsUser)->get('/Todas las incidencias');
 
         $response->assertOk();
         $response->assertSee('Todas las Incidencias');
-        // GTS no tiene la habilidad 'create' según IncidentPolicy
-        $response->assertDontSee('>Nueva Incidencia<', false);
+        // GTS ahora tiene la habilidad 'create' según IncidentPolicy
+        $response->assertSee('>Nueva Incidencia<', false);
     }
 
     public function test_inactive_user_cannot_access_incident_list(): void
     {
         $inactiveUser = User::factory()->inactive()->create();
 
-        $response = $this->actingAs($inactiveUser)->get('/incidencias');
+        $response = $this->actingAs($inactiveUser)->get('/Todas las incidencias');
 
         $response->assertForbidden();
     }
@@ -73,7 +82,7 @@ class IncidentListTest extends TestCase
             'title' => 'Cámara térmica perimetral sin video',
         ]);
 
-        $response = $this->actingAs($user)->get('/incidencias?search=INC-2026-0888');
+        $response = $this->actingAs($user)->get('/Todas las incidencias?search=INC-2026-0888');
 
         $response->assertOk();
         $response->assertSee('INC-2026-0888');
@@ -93,7 +102,7 @@ class IncidentListTest extends TestCase
             'title' => 'FIDS sin señal de video',
         ]);
 
-        $response = $this->actingAs($user)->get('/incidencias?search=Puerta 14B');
+        $response = $this->actingAs($user)->get('/Todas las incidencias?search=Puerta 14B');
 
         $response->assertOk();
         $response->assertSee('Puerta 14B');
@@ -115,7 +124,7 @@ class IncidentListTest extends TestCase
             'title' => 'Incidencia Cerrada Test',
         ]);
 
-        $response = $this->actingAs($user)->get('/incidencias?status_id=' . $statusNueva->id);
+        $response = $this->actingAs($user)->get('/Todas las incidencias?status_id='.$statusNueva->id);
 
         $response->assertOk();
         $response->assertSee('Incidencia Nueva Test');
@@ -137,7 +146,7 @@ class IncidentListTest extends TestCase
             'title' => 'Lámpara de rack fundida',
         ]);
 
-        $response = $this->actingAs($user)->get('/incidencias?priority_id=' . $priorityCritica->id);
+        $response = $this->actingAs($user)->get('/Todas las incidencias?priority_id='.$priorityCritica->id);
 
         $response->assertOk();
         $response->assertSee('Servidor Central Caído');
@@ -159,7 +168,7 @@ class IncidentListTest extends TestCase
             'title' => 'Interferencia en canal Bravo',
         ]);
 
-        $response = $this->actingAs($user)->get('/incidencias?category_id=' . $catCctv->id);
+        $response = $this->actingAs($user)->get('/Todas las incidencias?category_id='.$catCctv->id);
 
         $response->assertOk();
         $response->assertSee('Falla en grabador NVR');
@@ -176,10 +185,10 @@ class IncidentListTest extends TestCase
             'category_id' => $catCctv->id,
         ]);
 
-        $response = $this->actingAs($user)->get('/incidencias?category_id=' . $catCctv->id . '&page=2');
+        $response = $this->actingAs($user)->get('/Todas las incidencias?category_id='.$catCctv->id.'&page=2');
 
         $response->assertOk();
         // Verificar que los links de paginación conservan el query parameter category_id
-        $response->assertSee('category_id=' . $catCctv->id);
+        $response->assertSee('category_id='.$catCctv->id);
     }
 }

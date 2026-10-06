@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Models\Incident;
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 
 class StoreIncidentRequest extends FormRequest
@@ -17,9 +19,36 @@ class StoreIncidentRequest extends FormRequest
     }
 
     /**
+     * Prepara y sanitiza los datos antes de la validación.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (! $this->files->has('attachments')) {
+            return;
+        }
+
+        $files = $this->file('attachments');
+        $filesArray = is_array($files) ? $files : [$files];
+
+        $hasActualUploads = false;
+        foreach ($filesArray as $file) {
+            if ($file instanceof UploadedFile && $file->getError() !== UPLOAD_ERR_NO_FILE) {
+                $hasActualUploads = true;
+                break;
+            }
+        }
+
+        if (! $hasActualUploads) {
+            $this->files->remove('attachments');
+            $this->request->remove('attachments');
+            $this->convertedFiles = null;
+        }
+    }
+
+    /**
      * Reglas de validación para la creación de una incidencia.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
@@ -70,4 +99,3 @@ class StoreIncidentRequest extends FormRequest
         ];
     }
 }
-

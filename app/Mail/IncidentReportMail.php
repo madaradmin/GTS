@@ -17,12 +17,8 @@ class IncidentReportMail extends Mailable
     /**
      * Create a new message instance.
      *
-     * @param array<string, mixed> $summary
-     * @param array<string, mixed> $appliedFilters
-     * @param string $pdfBinary
-     * @param string $reportFolio
-     * @param User $requester
-     * @param string|null $notes
+     * @param  array<string, mixed>  $summary
+     * @param  array<string, mixed>  $appliedFilters
      */
     public function __construct(
         public array $summary,
@@ -68,4 +64,3 @@ class IncidentReportMail extends Mailable
         ];
     }
 }
-

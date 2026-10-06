@@ -16,8 +16,8 @@
         {{ $name }}
     </span>
 @elseif($slug === 'media')
-    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(224,162,26,0.15)] text-[#E2B24C] border border-[rgba(224,162,26,0.30)] shadow-sm whitespace-nowrap">
-        <span class="w-1.5 h-1.5 rounded-full bg-[#E0A21A]"></span>
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-[rgba(16,185,129,0.15)] text-[#34D399] border border-[rgba(16,185,129,0.30)] shadow-sm whitespace-nowrap">
+        <span class="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
         {{ $name }}
     </span>
 @else

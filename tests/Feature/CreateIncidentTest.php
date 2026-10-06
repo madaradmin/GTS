@@ -30,13 +30,15 @@ class CreateIncidentTest extends TestCase
         $response->assertRedirect('/login');
     }
 
-    public function test_gts_user_cannot_access_create_view(): void
+    public function test_gts_user_can_access_create_view(): void
     {
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
 
         $response = $this->actingAs($gtsUser)->get('/incidencias/nueva');
 
-        $response->assertForbidden();
+        $response->assertOk();
+        $response->assertSee('Nueva Incidencia');
+        $response->assertSee('Canal GTS Activo');
     }
 
     public function test_apoc_user_can_access_create_view_and_sees_preliminary_folio(): void
@@ -47,7 +49,7 @@ class CreateIncidentTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Nueva Incidencia');
-        $response->assertSee('INC-' . date('Y'));
+        $response->assertSee('INC-'.date('Y'));
         $response->assertViewHas(['categories', 'priorities', 'preliminaryFolio']);
     }
 
@@ -124,15 +126,15 @@ class CreateIncidentTest extends TestCase
         ]);
     }
 
-    public function test_gts_user_cannot_submit_incident_creation(): void
+    public function test_gts_user_can_submit_incident_creation(): void
     {
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
         $category = Category::firstOrFail();
         $priority = Priority::firstOrFail();
 
         $payload = [
-            'title' => 'Intento de reporte por usuario técnico GTS',
-            'description' => 'Un usuario con rol GTS no debe tener facultades de despacho operativo inicial.',
+            'title' => 'Reporte creado por usuario técnico GTS',
+            'description' => 'Un usuario con rol GTS ahora cuenta con facultades de registro de incidencias.',
             'location' => 'Servidores Centrales',
             'category_id' => $category->id,
             'priority_id' => $priority->id,
@@ -140,9 +142,10 @@ class CreateIncidentTest extends TestCase
 
         $response = $this->actingAs($gtsUser)->post('/incidencias', $payload);
 
-        $response->assertForbidden();
-        $this->assertDatabaseMissing('incidents', [
+        $response->assertRedirect();
+        $this->assertDatabaseHas('incidents', [
             'title' => $payload['title'],
+            'reported_by_user_id' => $gtsUser->id,
         ]);
     }
 
@@ -159,5 +162,18 @@ class CreateIncidentTest extends TestCase
             'category_id',
             'priority_id',
         ]);
+    }
+
+    public function test_incident_creation_view_displays_updated_support_extension_and_simplified_dispatch(): void
+    {
+        $apocUser = User::where('email', 'apoc@aifa.aero')->firstOrFail();
+
+        $response = $this->actingAs($apocUser)->get(route('incidents.create'));
+
+        $response->assertOk();
+        $response->assertSee('Soporte 55-57-98-98-00 Ext. 13202');
+        $response->assertDontSee('Ext. 4209 / 4210');
+        $response->assertSee('Despacho Automático: GTS');
+        $response->assertDontSee('Mesa GTS Guardia 2 (C4 & Pistas)');
     }
 }

@@ -57,7 +57,7 @@ class CategoryPolicy
      */
     public function delete(User $user, Category $category): bool
     {
-        if (!$user->is_active || !$user->isAdmin()) {
+        if (! $user->is_active || ! $user->isAdmin()) {
             return false;
         }
 

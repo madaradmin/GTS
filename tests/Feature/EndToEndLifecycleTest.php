@@ -6,7 +6,6 @@ use App\Models\Category;
 use App\Models\Incident;
 use App\Models\IncidentHistory;
 use App\Models\Priority;
-use App\Models\Status;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;

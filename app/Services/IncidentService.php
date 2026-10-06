@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Incident;
+use App\Models\IncidentHistory;
 use App\Models\Status;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -53,15 +54,18 @@ class IncidentService
             );
 
             // 5. Procesar archivos adjuntos si existen
-            if (!empty($attachments)) {
-                $this->fileStorage->storeAttachments($incident, $reporter, $attachments);
+            if (! empty($attachments)) {
+                $stored = $this->fileStorage->storeAttachments($incident, $reporter, $attachments);
 
-                $this->auditService->logAction(
-                    incidentId: $incident->id,
-                    userId: $reporter->id,
-                    action: 'ADJUNTOS_CARGADOS',
-                    comment: count($attachments) . ' archivo(s) de evidencia adjuntado(s) al expediente.'
-                );
+                if (! empty($stored)) {
+                    $this->auditService->logAction(
+                        incidentId: $incident->id,
+                        userId: $reporter->id,
+                        action: 'ADJUNTOS_CARGADOS',
+                        fieldName: 'attachments',
+                        comment: count($stored).' archivo(s) de evidencia adjuntado(s) al expediente.'
+                    );
+                }
             }
 
             return $incident->load(['category', 'priority', 'status', 'reportedBy', 'attachments']);
@@ -75,18 +79,17 @@ class IncidentService
     /**
      * Asigna o reasigna un especialista GTS a la incidencia y actualiza el estado operacional.
      *
-     * @param Incident $incident Incidencia a asignar
-     * @param User $assigner Usuario autenticado que ejecuta la acción (GTS o Admin)
-     * @param User $technician Especialista GTS asignado como responsable técnico
-     * @param string|null $comment Observaciones opcionales sobre la asignación
-     * @return Incident
+     * @param  Incident  $incident  Incidencia a asignar
+     * @param  User  $assigner  Usuario autenticado que ejecuta la acción (GTS o Admin)
+     * @param  User  $technician  Especialista GTS asignado como responsable técnico
+     * @param  string|null  $comment  Observaciones opcionales sobre la asignación
      */
     public function assignIncident(Incident $incident, User $assigner, User $technician, ?string $comment = null): Incident
     {
-        $isInitialAssignment = is_null($incident->assigned_to_user_id);
+        $isInitialAssignment = is_null($incident->assigned_to_user_id) && ! $incident->isAssignedToTics();
 
         $incident = DB::transaction(function () use ($incident, $assigner, $technician, $comment, $isInitialAssignment) {
-            $previousTechnician = $incident->assignedTo?->name ?? 'Sin asignar';
+            $previousTechnician = $incident->isAssignedToTics() ? 'TICS' : ($incident->assignedTo?->name ?? 'Sin asignar');
             $previousStatus = $incident->status->name;
 
             // 1. Si la incidencia se encuentra en estado NUEVA, transicionar a ASIGNADA (RN-02 / RN-03)
@@ -101,14 +104,15 @@ class IncidentService
                     fieldName: 'status_id',
                     oldValue: $previousStatus,
                     newValue: $assignedStatus->name,
-                    comment: $comment ?? ($assigner->id === $technician->id 
-                        ? "Incidencia tomada directamente por {$technician->name}." 
+                    comment: $comment ?? ($assigner->id === $technician->id
+                        ? "Incidencia tomada directamente por {$technician->name}."
                         : "Incidencia asignada a {$technician->name}.")
                 );
             }
 
-            // 2. Actualizar técnico asignado y timestamp de asignación
+            // 2. Actualizar técnico asignado y limpiar especialista asignado
             $incident->assigned_to_user_id = $technician->id;
+            $incident->assigned_specialist = null;
             if (is_null($incident->assigned_at)) {
                 $incident->assigned_at = now();
             }
@@ -119,7 +123,7 @@ class IncidentService
             $auditComment = $comment;
             if (empty($auditComment)) {
                 $auditComment = $isInitialAssignment
-                    ? ($assigner->id === $technician->id 
+                    ? ($assigner->id === $technician->id
                         ? "El especialista {$technician->name} tomó la responsabilidad técnica de la incidencia."
                         : "Asignado a {$technician->name} por {$assigner->name}.")
                     : "Reasignado de {$previousTechnician} a {$technician->name} por {$assigner->name}.";
@@ -138,7 +142,74 @@ class IncidentService
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
         });
 
-        $this->notificationService?->notifyIncidentAssigned($incident, $assigner, $technician, !$isInitialAssignment);
+        $this->notificationService?->notifyIncidentAssigned($incident, $assigner, $technician, ! $isInitialAssignment);
+
+        return $incident;
+    }
+
+    /**
+     * Asigna o reasigna un especialista / área externa (ej. TICS) a la incidencia.
+     *
+     * @param  Incident  $incident  Incidencia a asignar
+     * @param  User  $assigner  Usuario autenticado que ejecuta la acción (GTS o Admin)
+     * @param  string  $specialist  Nombre del especialista o área (por defecto 'TICS')
+     * @param  string|null  $comment  Observaciones opcionales sobre la asignación
+     */
+    public function assignToSpecialist(Incident $incident, User $assigner, string $specialist = 'TICS', ?string $comment = null): Incident
+    {
+        $isInitialAssignment = is_null($incident->assigned_to_user_id) && ! $incident->isAssignedToTics();
+
+        $incident = DB::transaction(function () use ($incident, $assigner, $specialist, $comment, $isInitialAssignment) {
+            $previousTechnician = $incident->isAssignedToTics() ? 'TICS' : ($incident->assignedTo?->name ?? 'Sin asignar');
+            $previousStatus = $incident->status->name;
+
+            // 1. Si la incidencia se encuentra en estado NUEVA, transicionar a ASIGNADA (RN-02 / RN-03)
+            if ($incident->status->code === 'NUEVA') {
+                $assignedStatus = Status::where('code', 'ASIGNADA')->firstOrFail();
+                $incident->status_id = $assignedStatus->id;
+
+                $this->auditService->logAction(
+                    incidentId: $incident->id,
+                    userId: $assigner->id,
+                    action: 'CAMBIO_ESTADO',
+                    fieldName: 'status_id',
+                    oldValue: $previousStatus,
+                    newValue: $assignedStatus->name,
+                    comment: $comment ?? "Incidencia asignada al especialista {$specialist}."
+                );
+            }
+
+            // 2. Actualizar técnico asignado (null), especialista ('TICS') y timestamp
+            $incident->assigned_to_user_id = null;
+            $incident->assigned_specialist = $specialist;
+            if (is_null($incident->assigned_at)) {
+                $incident->assigned_at = now();
+            }
+            $incident->save();
+
+            // 3. Registrar auditoría inmutable
+            $auditAction = $isInitialAssignment ? 'ASIGNADA' : 'REASIGNADA';
+            $auditComment = $comment;
+            if (empty($auditComment)) {
+                $auditComment = $isInitialAssignment
+                    ? "Asignado a {$specialist} por {$assigner->name}."
+                    : "Reasignado de {$previousTechnician} a {$specialist} por {$assigner->name}.";
+            }
+
+            $this->auditService->logAction(
+                incidentId: $incident->id,
+                userId: $assigner->id,
+                action: $auditAction,
+                fieldName: 'assigned_specialist',
+                oldValue: $previousTechnician,
+                newValue: $specialist,
+                comment: $auditComment
+            );
+
+            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
+        });
+
+        $this->notificationService?->notifyIncidentAssignedToSpecialist($incident, $assigner, $specialist, ! $isInitialAssignment);
 
         return $incident;
     }
@@ -146,18 +217,17 @@ class IncidentService
     /**
      * Inicia la atención técnica y diagnóstico en sitio o consola (transición a EN_ATENCION).
      *
-     * @param Incident $incident Incidencia objetivo
-     * @param User $user Especialista técnico que inicia la atención (GTS o Admin)
-     * @param string|null $comment Observaciones opcionales iniciales
-     * @return Incident
+     * @param  Incident  $incident  Incidencia objetivo
+     * @param  User  $user  Especialista técnico que inicia la atención (GTS o Admin)
+     * @param  string|null  $comment  Observaciones opcionales iniciales
      */
     public function startAttention(Incident $incident, User $user, ?string $comment = null): Incident
     {
         $incident = DB::transaction(function () use ($incident, $user, $comment) {
             $previousStatus = $incident->status->name;
 
-            // 1. Si la incidencia no tenía técnico asignado, auto-asignar al técnico que inicia atención (RN-02 / RN-03)
-            if (is_null($incident->assigned_to_user_id)) {
+            // 1. Si la incidencia no tenía técnico asignado ni especialista, auto-asignar al técnico que inicia atención (RN-02 / RN-03)
+            if (is_null($incident->assigned_to_user_id) && ! $incident->isAssignedToTics()) {
                 $incident->assigned_to_user_id = $user->id;
                 $incident->assigned_at = now();
 
@@ -168,7 +238,7 @@ class IncidentService
                     fieldName: 'assigned_to_user_id',
                     oldValue: 'Sin asignar',
                     newValue: $user->name,
-                    comment: "Incidencia asumida directamente al iniciar atención técnica."
+                    comment: 'Incidencia asumida directamente al iniciar atención técnica.'
                 );
             }
 
@@ -200,12 +270,11 @@ class IncidentService
     /**
      * Registra una nota técnica de campo o avance de diagnóstico en la bitácora de la incidencia.
      *
-     * @param Incident $incident Incidencia en atención activa
-     * @param User $user Especialista técnico o administrador
-     * @param string $note Contenido detallado del avance técnico
-     * @return \App\Models\IncidentHistory
+     * @param  Incident  $incident  Incidencia en atención activa
+     * @param  User  $user  Especialista técnico o administrador
+     * @param  string  $note  Contenido detallado del avance técnico
      */
-    public function addTechnicalNote(Incident $incident, User $user, string $note): \App\Models\IncidentHistory
+    public function addTechnicalNote(Incident $incident, User $user, string $note): IncidentHistory
     {
         $history = $this->auditService->logAction(
             incidentId: $incident->id,
@@ -225,10 +294,9 @@ class IncidentService
     /**
      * Marca la incidencia como RESUELTA por el personal técnico GTS, documentando la solución aplicada.
      *
-     * @param Incident $incident Incidencia en atención técnica
-     * @param User $technician Especialista técnico o Administrador que resuelve
-     * @param string $solutionDescription Detalle técnico exhaustivo de la solución aplicada
-     * @return Incident
+     * @param  Incident  $incident  Incidencia en atención técnica
+     * @param  User  $technician  Especialista técnico o Administrador que resuelve
+     * @param  string  $solutionDescription  Detalle técnico exhaustivo de la solución aplicada
      */
     public function resolveIncident(Incident $incident, User $technician, string $solutionDescription): Incident
     {
@@ -275,10 +343,9 @@ class IncidentService
     /**
      * Rechaza la solución técnica reportada por GTS y devuelve la incidencia al estado activo EN_ATENCION.
      *
-     * @param Incident $incident Incidencia en estado RESUELTA
-     * @param User $actor Operador APOC o Administrador que rechaza
-     * @param string $reason Justificación obligatoria detallando por qué la falla persiste
-     * @return Incident
+     * @param  Incident  $incident  Incidencia en estado RESUELTA
+     * @param  User  $actor  Operador APOC o Administrador que rechaza
+     * @param  string  $reason  Justificación obligatoria detallando por qué la falla persiste
      */
     public function rejectResolution(Incident $incident, User $actor, string $reason): Incident
     {
@@ -325,10 +392,9 @@ class IncidentService
     /**
      * Da el visto bueno operacional y cierra definitivamente la incidencia (transición a CERRADA).
      *
-     * @param Incident $incident Incidencia en estado RESUELTA
-     * @param User $closer Operador APOC o Administrador que otorga el cierre
-     * @param string|null $comment Observaciones de conformidad o cierre operacional (opcional)
-     * @return Incident
+     * @param  Incident  $incident  Incidencia en estado RESUELTA
+     * @param  User  $closer  Operador APOC o Administrador que otorga el cierre
+     * @param  string|null  $comment  Observaciones de conformidad o cierre operacional (opcional)
      */
     public function closeIncident(Incident $incident, User $closer, ?string $comment = null): Incident
     {
@@ -349,7 +415,7 @@ class IncidentService
                 fieldName: 'status_id',
                 oldValue: $previousStatus,
                 newValue: $closedStatus->name,
-                comment: $comment ?? "Visto bueno operacional otorgado por {$closer->name} (APOC). Incidencia cerrada definitivamente."
+                comment: $comment ?? "Visto bueno operacional otorgado por {$closer->getTaggedName()}. Incidencia cerrada definitivamente."
             );
 
             // 3. Auditoría inmutable de cierre definitivo del expediente (RF-05 / RN-02 / RN-04)
@@ -360,7 +426,7 @@ class IncidentService
                 fieldName: 'closed_at',
                 oldValue: null,
                 newValue: $incident->closed_at->toIso8601String(),
-                comment: $comment ?? "Expediente archivado en modo inmutable con conformidad total de servicio."
+                comment: $comment ?? "Expediente archivado en modo inmutable con visto bueno de {$closer->getTaggedName()}."
             );
 
             return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
@@ -371,5 +437,3 @@ class IncidentService
         return $incident;
     }
 }
-
-

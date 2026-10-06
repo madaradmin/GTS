@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\IncidentReportMail;
 use App\Models\Category;
 use App\Models\Incident;
+use App\Models\IncidentAttachment;
 use App\Models\Priority;
 use App\Models\Status;
 use App\Models\User;
@@ -20,6 +21,7 @@ class ReportSystemTest extends TestCase
     use RefreshDatabase;
 
     protected User $apocUser;
+
     protected User $gtsUser;
 
     protected function setUp(): void
@@ -54,7 +56,7 @@ class ReportSystemTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Sistema Profesional de Reportes');
-        $response->assertSee('Generar PDF Institucional');
+        $response->assertSee('Descargar PDF Institucional');
         $response->assertSee('Enviar por Correo');
         $response->assertSee('WhatsApp');
     }
@@ -184,6 +186,7 @@ class ReportSystemTest extends TestCase
             $this->assertStringContainsString('[GTS AIFA] Reporte Operativo de Incidencias', $mail->envelope()->subject);
             $this->assertEquals('Informe urgente del turno nocturno para revisión pericial.', $mail->notes);
             $this->assertNotEmpty($mail->pdfBinary);
+
             return true;
         });
     }
@@ -239,8 +242,8 @@ class ReportSystemTest extends TestCase
         $response->assertStatus(200);
         // Debe contener el enlace a reports.index
         $response->assertSee(route('reports.index'));
-        // El botón "Generar reporte" en el HTML debe apuntar a reports.index
-        $this->assertStringContainsString('href="' . route('reports.index') . '"', $response->getContent());
+        // El botón "Descargar reporte" en el HTML debe apuntar a reports.index
+        $this->assertStringContainsString('href="'.route('reports.index').'"', $response->getContent());
     }
 
     public function test_sidebar_contains_reports_link(): void
@@ -249,9 +252,26 @@ class ReportSystemTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee(route('reports.index'));
-        $response->assertSee('Generador de reportes');
-        $response->assertSee('Reporte Diario');
-        $response->assertSee('Reporte Semanal');
+        $response->assertSee('Descargar reporte');
+        $response->assertDontSee('Reporte Diario');
+        $response->assertDontSee('Reporte Semanal');
+    }
+
+    public function test_reports_renders_successfully_with_incident_attachments(): void
+    {
+        $incident = Incident::factory()->create([
+            'reported_by_user_id' => $this->gtsUser->id,
+        ]);
+
+        IncidentAttachment::factory()->create([
+            'incident_id' => $incident->id,
+            'uploaded_by_user_id' => $this->gtsUser->id,
+        ]);
+
+        $responseIndex = $this->actingAs($this->gtsUser)->get(route('reports.index'));
+        $responseIndex->assertStatus(200);
+
+        $responsePdf = $this->actingAs($this->gtsUser)->get(route('reports.pdf'));
+        $responsePdf->assertStatus(200);
     }
 }
-

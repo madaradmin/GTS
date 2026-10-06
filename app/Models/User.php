@@ -16,12 +16,11 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'role_id',
         'badge_number',
-        'shift_status',
-        'shift_status_updated_at',
         'is_active',
     ];
 
@@ -34,7 +33,6 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
-            'shift_status_updated_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
@@ -74,17 +72,14 @@ class User extends Authenticatable
 
     /**
      * Comprueba si el usuario posee uno o varios roles específicos.
-     *
-     * @param string|array $roles
-     * @return bool
      */
     public function hasRole(string|array $roles): bool
     {
-        if (!$this->relationLoaded('role')) {
+        if (! $this->relationLoaded('role')) {
             $this->load('role');
         }
 
-        if (!$this->role) {
+        if (! $this->role) {
             return false;
         }
 
@@ -94,19 +89,45 @@ class User extends Authenticatable
     }
 
     /**
-     * Comprueba si el usuario tiene rol APOC.
+     * Comprueba si el usuario tiene rol APOC (incluyendo variantes APOC-CCO y APOC-CSA).
      */
     public function isApoc(): bool
     {
-        return $this->hasRole('apoc');
+        return $this->hasRole('apoc', 'apoc-cco', 'apoc-csa');
     }
 
     /**
-     * Historial de cambios de disponibilidad operacional en turnos.
+     * Comprueba si el usuario tiene rol APOC-CCO.
      */
-    public function availabilityLogs(): HasMany
+    public function isApocCco(): bool
     {
-        return $this->hasMany(AgentAvailabilityLog::class)->orderBy('created_at', 'desc');
+        if ($this->hasRole('apoc-cco')) {
+            return true;
+        }
+
+        if ($this->hasRole('apoc')) {
+            return str_contains(strtolower($this->username ?? ''), 'cco')
+                || str_contains(strtoupper($this->badge_number ?? ''), 'CCO');
+        }
+
+        return false;
+    }
+
+    /**
+     * Comprueba si el usuario tiene rol APOC-CSA.
+     */
+    public function isApocCsa(): bool
+    {
+        if ($this->hasRole('apoc-csa')) {
+            return true;
+        }
+
+        if ($this->hasRole('apoc')) {
+            return str_contains(strtolower($this->username ?? ''), 'csa')
+                || str_contains(strtoupper($this->badge_number ?? ''), 'CSA');
+        }
+
+        return false;
     }
 
     /**
@@ -126,64 +147,46 @@ class User extends Authenticatable
     }
 
     /**
-     * Comprueba si el agente está en estado ACTIVO / DISPONIBLE para recibir asignaciones.
-     */
-    public function isShiftActive(): bool
-    {
-        return strtoupper($this->shift_status ?? 'ACTIVO') === 'ACTIVO';
-    }
-
-    /**
-     * Comprueba si el agente está en estado NO DISPONIBLE (receso, descanso o fuera de turno).
-     */
-    public function isShiftUnavailable(): bool
-    {
-        return strtoupper($this->shift_status ?? '') === 'NO DISPONIBLE';
-    }
-
-    /**
-     * Actualiza el estado de disponibilidad del agente y genera el registro en la bitácora histórica.
-     */
-    public function setShiftStatus(string $newStatus, ?string $reason = null, ?string $ipAddress = null): void
-    {
-        $oldStatus = $this->shift_status ?? 'ACTIVO';
-
-        $this->shift_status = $newStatus;
-        $this->shift_status_updated_at = now();
-        $this->save();
-
-        AgentAvailabilityLog::create([
-            'user_id' => $this->id,
-            'status' => $newStatus,
-            'previous_status' => $oldStatus,
-            'reason' => $reason,
-            'ip_address' => $ipAddress,
-            'created_at' => now(),
-        ]);
-    }
-
-    /**
-     * Scope para filtrar usuarios con estado de turno ACTIVO.
-     */
-    public function scopeShiftActive($query)
-    {
-        return $query->where('shift_status', 'ACTIVO');
-    }
-
-    /**
-     * Scope para filtrar usuarios con estado NO DISPONIBLE.
-     */
-    public function scopeShiftUnavailable($query)
-    {
-        return $query->where('shift_status', 'NO DISPONIBLE');
-    }
-
-    /**
      * Scope para obtener especialistas técnicos GTS.
      */
     public function scopeGtsAgents($query)
     {
-        return $query->whereHas('role', fn($q) => $q->where('slug', 'gts'));
+        return $query->whereHas('role', fn ($q) => $q->where('slug', 'gts'));
+    }
+
+    /**
+     * Obtiene la etiqueta corta del rol del usuario (Admin, GTS, CCO, CSA, APOC).
+     */
+    public function getRoleTag(): string
+    {
+        if ($this->isAdmin()) {
+            return 'Admin';
+        }
+
+        if ($this->isGts()) {
+            return 'GTS';
+        }
+
+        if ($this->isApocCco()) {
+            return 'CCO';
+        }
+
+        if ($this->isApocCsa()) {
+            return 'CSA';
+        }
+
+        if ($this->isApoc()) {
+            return 'APOC';
+        }
+
+        return $this->role?->name ?? 'Usuario';
+    }
+
+    /**
+     * Obtiene el nombre del usuario con el tag de su rol: |ROL| Nombre.
+     */
+    public function getTaggedName(): string
+    {
+        return "|{$this->getRoleTag()}| {$this->name}";
     }
 }
-

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Category;
+use App\Models\Incident;
 use App\Models\User;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -24,10 +26,15 @@ class AppServiceProvider extends ServiceProvider
         // Regla aeronáutica: La eliminación de incidencias está estrictamente prohibida para todos
         Gate::before(function (User $user, string $ability, array $args = []) {
             if ($ability === 'delete') {
-                if (isset($args[0]) && $args[0] instanceof \App\Models\Category) {
+                if (isset($args[0]) && $args[0] instanceof Category) {
                     if ($args[0]->incidents()->count() > 0) {
                         return false;
                     }
+
+                    return $user->isAdmin();
+                }
+
+                if (isset($args[0]) && $args[0] instanceof Incident) {
                     return $user->isAdmin();
                 }
 
@@ -45,4 +52,3 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('access-admin', fn (User $user) => $user->isAdmin());
     }
 }
-

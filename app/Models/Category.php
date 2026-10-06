@@ -107,7 +107,7 @@ class Category extends Model
 
         // Degradación progresiva según número de incidencias abiertas concurrentes
         $percentage = max(70.0, 100.0 - ($activeCount * 5.0));
+
         return round($percentage, 1);
     }
 }
-

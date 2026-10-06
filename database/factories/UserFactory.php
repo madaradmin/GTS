@@ -14,18 +14,20 @@ use Illuminate\Support\Str;
 class UserFactory extends Factory
 {
     protected $model = User::class;
+
     protected static ?string $password;
 
     public function definition(): array
     {
         return [
             'name' => fake()->name(),
+            'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'role_id' => Role::where('slug', 'apoc')->value('id') ?? Role::factory(),
-            'badge_number' => 'GAF-' . fake()->unique()->numberBetween(1000, 9999),
+            'badge_number' => 'GAF-'.fake()->unique()->numberBetween(1000, 9999),
             'is_active' => true,
         ];
     }
@@ -37,6 +39,26 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'role_id' => Role::where('slug', 'apoc')->value('id') ?? Role::factory()->create(['slug' => 'apoc', 'name' => 'Operador APOC']),
+        ]);
+    }
+
+    /**
+     * Usuario con rol Operador APOC-CCO.
+     */
+    public function apocCco(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role_id' => Role::where('slug', 'apoc-cco')->value('id') ?? Role::factory()->create(['slug' => 'apoc-cco', 'name' => 'APOC-CCO']),
+        ]);
+    }
+
+    /**
+     * Usuario con rol Operador APOC-CSA.
+     */
+    public function apocCsa(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role_id' => Role::where('slug', 'apoc-csa')->value('id') ?? Role::factory()->create(['slug' => 'apoc-csa', 'name' => 'APOC-CSA']),
         ]);
     }
 

@@ -15,7 +15,7 @@
             </div>
             <div class="flex items-center gap-2 self-start md:self-auto bg-surface-container-low px-4 py-2 rounded-xl border border-border-subtle shadow-sm">
                 <span class="w-2.5 h-2.5 rounded-full bg-status-resolved animate-pulse"></span>
-                <span class="text-xs text-on-surface uppercase tracking-wider font-semibold">Canal APOC Activo</span>
+                <span class="text-xs text-on-surface uppercase tracking-wider font-semibold">{{ auth()->user()->isGts() ? 'Canal GTS Activo' : (auth()->user()->isApocCco() ? 'Canal APOC-CCO Activo' : (auth()->user()->isApocCsa() ? 'Canal APOC-CSA Activo' : (auth()->user()->isApoc() ? 'Canal APOC Activo' : 'Canal Administrador Activo'))) }}</span>
             </div>
         </div>
 
@@ -33,7 +33,7 @@
             </div>
         @endif
 
-        <form action="{{ route('incidents.store') }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-6" id="incidentForm">
+        <form action="{{ route('incidents.store') }}" method="POST" enctype="multipart/form-data" class="flex flex-col gap-6" id="incidentForm" autocomplete="off">
             @csrf
 
             <!-- Grid Principal de Formulario -->
@@ -60,6 +60,7 @@
                                 value="{{ old('title') }}"
                                 placeholder="ej. Falla en lectura de tarjeta de acceso Puerta 14B"
                                 required
+                                autocomplete="off"
                                 type="text"
                             />
                         </div>
@@ -104,6 +105,7 @@
                                         value="{{ old('location') }}"
                                         placeholder="ej. Terminal 1 - Nivel 2, Puerta 14B"
                                         required
+                                        autocomplete="off"
                                         type="text"
                                     />
                                     <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">
@@ -115,9 +117,9 @@
 
                         <!-- Prioridad Sugerida (Botones Radio Segmentados) -->
                         <div class="flex flex-col gap-2 pt-1">
-                            <label class="text-xs font-medium text-on-surface flex items-center justify-between">
+                            <label class="text-xs font-medium text-on-surface flex items-center justify-between flex-wrap gap-2">
                                 <span>Prioridad Sugerida <span class="text-status-critical">*</span></span>
-                                <span class="text-outline text-xs">Determina el SLA y tiempo de respuesta</span>
+                                <span class="text-outline text-xs">Determina el tiempo de respuesta estimado</span>
                             </label>
                             <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
                                 @foreach ($priorities as $priority)
@@ -126,14 +128,14 @@
                                         $isChecked = old('priority_id') == $priority->id || (!old('priority_id') && $slug === 'media');
                                         $colorClasses = match($slug) {
                                             'baja' => 'text-status-neutral',
-                                            'media' => 'text-secondary',
+                                            'media' => 'text-[#10B981]',
                                             'alta' => 'text-status-warning',
                                             'critica' => 'text-status-critical',
                                             default => 'text-primary',
                                         };
                                         $dotBg = match($slug) {
                                             'baja' => 'bg-status-neutral',
-                                            'media' => 'bg-secondary',
+                                            'media' => 'bg-[#10B981]',
                                             'alta' => 'bg-status-warning',
                                             'critica' => 'bg-status-critical',
                                             default => 'bg-primary',
@@ -149,7 +151,7 @@
                                             <span class="material-symbols-outlined text-[16px] text-primary opacity-0 peer-checked:opacity-100 transition-opacity">check_circle</span>
                                         </div>
                                         <span class="text-xs text-on-surface-variant leading-snug">
-                                            SLA objetivo: {{ $priority->sla_minutes }} minutos
+                                            Tiempo de respuesta estimado: {{ $priority->sla_minutes }} minutos
                                         </span>
                                     </label>
                                 @endforeach
@@ -180,30 +182,106 @@
                     </section>
 
                     <!-- Bloque 3: Evidencia o Adjuntos -->
-                    <section class="bg-surface-subtle border border-border-subtle p-6 rounded-xl shadow-sm flex flex-col gap-4">
+                    <section 
+                        x-data="attachmentUploader()" 
+                        class="bg-surface-subtle border border-border-subtle p-6 rounded-xl shadow-sm flex flex-col gap-4"
+                    >
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="material-symbols-outlined text-primary text-[22px]">attach_file</span>
                                 <h2 class="text-base font-semibold text-on-surface">Evidencia o Adjuntos</h2>
                             </div>
-                            <span class="text-xs px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant border border-border-subtle">Opcional</span>
+                            <div class="flex items-center gap-2">
+                                <span x-show="files.length > 0" x-cloak class="text-xs px-2.5 py-0.5 rounded bg-primary/20 text-primary font-mono font-medium border border-primary/30">
+                                    <span x-text="files.length"></span> / 5 seleccionados
+                                </span>
+                                <span class="text-xs px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant border border-border-subtle">Opcional</span>
+                            </div>
                         </div>
-                        <!-- Dropzone sin bordes punteados clásicos, profundidad tonal -->
-                        <div class="relative bg-surface-container-low hover:bg-surface-container border border-border-subtle hover:border-border-active rounded-xl p-8 transition-colors flex flex-col items-center justify-center text-center group cursor-pointer shadow-inner">
-                            <input accept=".png,.jpg,.jpeg,.pdf,.txt" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple name="attachments[]" type="file"/>
-                            <div class="w-12 h-12 rounded-xl bg-surface-container-high border border-border-active flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform shadow-sm">
+
+                        <!-- Dropzone interactivo con soporte de clic y arrastre (Drag & Drop) -->
+                        <div 
+                            @dragover.prevent="isDragging = true"
+                            @dragleave.prevent="isDragging = false"
+                            @drop.prevent="handleDrop($event)"
+                            @click="$refs.fileInput.click()"
+                            :class="isDragging ? 'border-primary bg-primary/10 ring-2 ring-primary/40' : 'border-border-subtle hover:border-border-active bg-surface-container-low hover:bg-surface-container'"
+                            class="relative border rounded-xl p-6 sm:p-8 transition-all flex flex-col items-center justify-center text-center cursor-pointer shadow-inner group"
+                        >
+                            <input 
+                                type="file" 
+                                x-ref="fileInput"
+                                id="attachments"
+                                name="attachments[]" 
+                                multiple 
+                                accept=".png,.jpg,.jpeg,.pdf,.txt" 
+                                @change="handleFileSelect($event)"
+                                class="sr-only"
+                            />
+
+                            <div class="w-12 h-12 rounded-xl bg-surface-container-high border border-border-active flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform shadow-sm pointer-events-none">
                                 <span class="material-symbols-outlined text-[26px]">cloud_upload</span>
                             </div>
-                            <p class="text-sm font-medium text-on-surface">
+                            <p class="text-sm font-medium text-on-surface pointer-events-none">
                                 Arrastra y suelta capturas de error, bitácoras o documentos
                             </p>
-                            <p class="text-xs text-outline mt-1">
-                                Formatos admitidos: PNG, JPG, PDF o TXT (Máximo 10 MB por archivo)
+                            <p class="text-xs text-outline mt-1 pointer-events-none">
+                                Formatos admitidos: PNG, JPG, PDF o TXT (Máximo 10 MB por archivo, hasta 5 archivos)
                             </p>
-                            <span class="mt-3 px-3 py-1 bg-surface-card border border-border-subtle rounded text-primary text-xs group-hover:bg-primary group-hover:text-on-primary transition-colors">
+                            <button 
+                                type="button" 
+                                class="mt-3 px-3.5 py-1.5 bg-surface-card border border-border-subtle rounded-lg text-primary text-xs font-semibold group-hover:bg-primary group-hover:text-on-primary transition-colors pointer-events-none"
+                            >
                                 Explorar archivos locales
-                            </span>
+                            </button>
                         </div>
+
+                        <!-- Alerta inline para validaciones de tamaño, formato o límite en frontend -->
+                        <div x-show="errorMessage" x-cloak class="p-3 rounded-xl bg-error-container/20 border border-error/30 text-error text-xs flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] shrink-0">error</span>
+                            <span x-text="errorMessage"></span>
+                        </div>
+
+                        <!-- Lista visual de archivos seleccionados en tiempo real -->
+                        <template x-if="files.length > 0">
+                            <div class="flex flex-col gap-2 pt-1">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-semibold uppercase tracking-wider text-outline">
+                                        Evidencias preparadas (<span x-text="files.length"></span>)
+                                    </span>
+                                    <button 
+                                        type="button" 
+                                        @click="clearAll()" 
+                                        class="text-xs text-outline hover:text-error transition-colors"
+                                    >
+                                        Quitar todas
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    <template x-for="(file, index) in files" :key="index + '-' + file.name">
+                                        <div class="p-3 rounded-xl bg-surface-container-low border border-border-subtle flex items-center justify-between gap-3 shadow-sm hover:border-border-active transition-colors">
+                                            <div class="flex items-center gap-2.5 min-w-0">
+                                                <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border" :class="getFileBadgeClass(file)">
+                                                    <span class="material-symbols-outlined text-[20px]" x-text="getFileIcon(file)"></span>
+                                                </div>
+                                                <div class="flex flex-col min-w-0">
+                                                    <span class="text-xs font-mono font-medium text-on-surface truncate" x-text="file.name" :title="file.name"></span>
+                                                    <span class="text-[11px] font-mono text-outline" x-text="formatBytes(file.size)"></span>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                type="button" 
+                                                @click.stop="removeFile(index)" 
+                                                class="p-1.5 rounded-lg text-outline hover:text-error hover:bg-error-container/20 transition-colors shrink-0"
+                                                title="Quitar archivo"
+                                            >
+                                                <span class="material-symbols-outlined text-[18px]">close</span>
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
                     </section>
                 </div>
 
@@ -250,10 +328,10 @@
                             </div>
                             <!-- Canal de Notificación -->
                             <div class="flex flex-col p-3 rounded-lg bg-surface-container-low border border-border-subtle shadow-sm">
-                                <span class="text-xs uppercase tracking-wider text-outline font-mono">Despacho Automático</span>
+                                <span class="text-xs uppercase tracking-wider text-outline font-mono">Despacho Automático: GTS</span>
                                 <div class="flex items-center gap-2 mt-1">
                                     <span class="w-2 h-2 rounded-full bg-primary"></span>
-                                    <span class="text-xs text-on-surface font-medium">Mesa GTS Guardia 2 (C4 & Pistas)</span>
+                                    <span class="text-xs text-on-surface font-medium">GTS</span>
                                 </div>
                             </div>
                         </div>
@@ -270,7 +348,7 @@
                         </p>
                         <div class="flex items-center gap-2 pt-1 text-outline text-xs">
                             <span class="material-symbols-outlined text-[14px]">call</span>
-                            <span>Mesa de Soporte: Ext. 4209 / 4210</span>
+                            <span>Soporte 55-57-98-98-00 Ext. 13202</span>
                         </div>
                     </div>
                 </div>
@@ -326,8 +404,10 @@
             const btnSubmit = document.getElementById('btnSubmit');
             if (incidentForm && btnSubmit) {
                 incidentForm.addEventListener('submit', () => {
-                    btnSubmit.disabled = true;
-                    btnSubmit.classList.add('opacity-75', 'cursor-not-allowed');
+                    setTimeout(() => {
+                        btnSubmit.disabled = true;
+                    }, 0);
+                    btnSubmit.classList.add('opacity-75', 'cursor-not-allowed', 'pointer-events-none');
                     btnSubmit.innerHTML = `
                         <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
                         <span>Despachando a GTS...</span>
@@ -335,6 +415,104 @@
                 });
             }
         });
+
+        function attachmentUploader() {
+            return {
+                files: [],
+                isDragging: false,
+                errorMessage: '',
+
+                handleFileSelect(event) {
+                    this.addFiles(event.target.files);
+                },
+
+                handleDrop(event) {
+                    this.isDragging = false;
+                    if (event.dataTransfer && event.dataTransfer.files) {
+                        this.addFiles(event.dataTransfer.files);
+                    }
+                },
+
+                addFiles(newFileList) {
+                    this.errorMessage = '';
+                    const maxFiles = 5;
+                    const maxBytes = 10 * 1024 * 1024; // 10 MB
+                    const allowedExtensions = ['png', 'jpg', 'jpeg', 'pdf', 'txt'];
+
+                    const incoming = Array.from(newFileList);
+
+                    for (const file of incoming) {
+                        if (this.files.length >= maxFiles) {
+                            this.errorMessage = `Límite alcanzado: solo se admiten hasta ${maxFiles} archivos de evidencia simultáneamente.`;
+                            break;
+                        }
+
+                        const ext = file.name.split('.').pop().toLowerCase();
+                        if (!allowedExtensions.includes(ext)) {
+                            this.errorMessage = `El archivo "${file.name}" no es válido. Solo se admiten formatos JPG, PNG, PDF o TXT.`;
+                            continue;
+                        }
+
+                        if (file.size > maxBytes) {
+                            this.errorMessage = `El archivo "${file.name}" excede los 10 MB máximos permitidos.`;
+                            continue;
+                        }
+
+                        const exists = this.files.some(f => f.name === file.name && f.size === file.size);
+                        if (!exists) {
+                            this.files.push(file);
+                        }
+                    }
+
+                    this.syncInput();
+                },
+
+                removeFile(index) {
+                    this.files.splice(index, 1);
+                    this.syncInput();
+                    this.errorMessage = '';
+                },
+
+                clearAll() {
+                    this.files = [];
+                    this.syncInput();
+                    this.errorMessage = '';
+                },
+
+                syncInput() {
+                    const input = this.$refs.fileInput;
+                    if (!input) return;
+
+                    const dt = new DataTransfer();
+                    for (const file of this.files) {
+                        dt.items.add(file);
+                    }
+                    input.files = dt.files;
+                },
+
+                formatBytes(bytes) {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                },
+
+                getFileIcon(file) {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (['png', 'jpg', 'jpeg'].includes(ext)) return 'image';
+                    if (ext === 'pdf') return 'picture_as_pdf';
+                    if (ext === 'txt') return 'description';
+                    return 'attach_file';
+                },
+
+                getFileBadgeClass(file) {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (['png', 'jpg', 'jpeg'].includes(ext)) return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30';
+                    if (ext === 'pdf') return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+                    return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+                }
+            };
+        }
     </script>
 </x-app-layout>
-

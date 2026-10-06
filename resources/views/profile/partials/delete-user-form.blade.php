@@ -1,3 +1,4 @@
+@if(auth()->user()->isAdmin())
 <section class="space-y-6">
     <header>
         <h2 class="text-lg font-medium text-brand-text-primary">
@@ -15,7 +16,7 @@
     >{{ __('Delete Account') }}</x-danger-button>
 
     <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
-        <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
+        <form method="post" action="{{ route('profile.destroy') }}" class="p-6" autocomplete="off">
             @csrf
             @method('delete')
 
@@ -53,3 +54,4 @@
         </form>
     </x-modal>
 </section>
+@endif

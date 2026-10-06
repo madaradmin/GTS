@@ -30,4 +30,3 @@ class IncidentHistoryFactory extends Factory
         ];
     }
 }
-

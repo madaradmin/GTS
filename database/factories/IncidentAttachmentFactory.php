@@ -29,10 +29,9 @@ class IncidentAttachmentFactory extends Factory
             'incident_id' => Incident::inRandomOrder()->value('id') ?? Incident::factory(),
             'uploaded_by_user_id' => User::inRandomOrder()->value('id') ?? User::factory(),
             'original_filename' => $selected[0],
-            'stored_path' => 'attachments/' . fake()->uuid() . '_' . $selected[0],
+            'stored_path' => 'attachments/'.fake()->uuid().'_'.$selected[0],
             'mime_type' => $selected[1],
             'file_size_bytes' => $selected[2],
         ];
     }
 }
-

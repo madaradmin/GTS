@@ -11,20 +11,20 @@ class WhatsAppReportService
     /**
      * Formatea el mensaje ejecutivo para el despacho por WhatsApp.
      *
-     * @param array<string, mixed> $summary
-     * @param array<string, mixed> $filters
-     * @param string $reportFolio
-     * @param string|null $reportUrl
-     * @return string
+     * @param  array<string, mixed>  $summary
+     * @param  array<string, mixed>  $filters
+     * @param  array<string>|null  $selectedFolios
      */
-    public function formatReportMessage(array $summary, array $filters, string $reportFolio, ?string $reportUrl = null): string
+    public function formatReportMessage(array $summary, array $filters, string $reportFolio, ?string $reportUrl = null, ?array $selectedFolios = null): string
     {
-        $dateStr = Carbon::now('America/Mexico_City')->format('d/m/Y H:i');
-        
+        $dateStr = Carbon::now(config('app.timezone', 'America/Mexico_City'))->format('d/m/Y H:i');
+
         $periodLabel = 'General (Histórico Completo)';
-        if (!empty($filters['date_from']) && !empty($filters['date_to'])) {
+        if (! empty($selectedFolios)) {
+            $periodLabel = count($selectedFolios).' Incidencias Seleccionadas';
+        } elseif (! empty($filters['date_from']) && ! empty($filters['date_to'])) {
             $periodLabel = "Del {$filters['date_from']} al {$filters['date_to']}";
-        } elseif (!empty($filters['period_preset'])) {
+        } elseif (! empty($filters['period_preset'])) {
             $periodLabel = match ($filters['period_preset']) {
                 'today' => 'Turno Actual (Hoy)',
                 'last_7_days', 'week' => 'Últimos 7 Días',
@@ -42,24 +42,29 @@ class WhatsAppReportService
         $tasa = $summary['resolution_rate'] ?? 0;
         $mttr = $summary['avg_resolution_time_formatted'] ?? 'N/A';
 
-        $urlLine = $reportUrl ? "\n🔗 *Acceso Seguro:* {$reportUrl}" : "";
+        $selectedFoliosLine = ! empty($selectedFolios)
+            ? '🎯 *Folios Seleccionados:* '.implode(', ', array_slice($selectedFolios, 0, 10)).(count($selectedFolios) > 10 ? ' y más...' : '')."\n\n"
+            : '';
+
+        $urlLine = $reportUrl ? "\n🔗 *Acceso Seguro:* {$reportUrl}" : '';
 
         return "🏛️ *AIFA — GTS (Grupo de Seguridad Tecnológica)*\n"
-             . "📋 *REPORTE OPERATIVO DE INCIDENCIAS*\n"
-             . "🔖 *Folio:* #{$reportFolio}\n"
-             . "📅 *Emisión:* {$dateStr} hrs\n"
-             . "⏱️ *Período:* {$periodLabel}\n\n"
-             . "📊 *RESUMEN EJECUTIVO:*\n"
-             . "• *Total Incidencias:* {$total}\n"
-             . "• 🔵 *Nuevas:* {$nuevas}\n"
-             . "• 🟣 *Asignadas:* {$asignadas}\n"
-             . "• 🟡 *En Atención:* {$enAtencion}\n"
-             . "• 🟢 *Resueltas:* {$resueltas}\n"
-             . "• ⚪ *Cerradas:* {$cerradas}\n"
-             . "• ⚡ *Tasa de Eficacia:* {$tasa}%\n"
-             . "• ⏳ *MTTR Promedio:* {$mttr}\n"
-             . $urlLine . "\n\n"
-             . "🔒 _Control Operativo Aeroportuario AIFA • Sistema GTS_";
+             ."📋 *REPORTE OPERATIVO DE INCIDENCIAS*\n"
+             ."🔖 *Folio:* #{$reportFolio}\n"
+             ."📅 *Emisión:* {$dateStr} hrs\n"
+             ."⏱️ *Período / Criterio:* {$periodLabel}\n\n"
+             .$selectedFoliosLine
+             ."📊 *RESUMEN EJECUTIVO:*\n"
+             ."• *Total Incidencias:* {$total}\n"
+             ."• 🔵 *Nuevas:* {$nuevas}\n"
+             ."• 🟣 *Asignadas:* {$asignadas}\n"
+             ."• 🟡 *En Atención:* {$enAtencion}\n"
+             ."• 🟢 *Resueltas:* {$resueltas}\n"
+             ."• ⚪ *Cerradas:* {$cerradas}\n"
+             ."• ⚡ *Tasa de Eficacia:* {$tasa}%\n"
+             ."• ⏳ *MTTR Promedio:* {$mttr}\n"
+             .$urlLine."\n\n"
+             .'🔒 _Control Operativo Aeroportuario AIFA • Sistema GTS_';
     }
 
     /**
@@ -68,10 +73,10 @@ class WhatsAppReportService
     public function sanitizePhoneNumber(string $phone): string
     {
         $cleaned = preg_replace('/[^\d+]/', '', $phone) ?? '';
-        
+
         // Si no inicia con '+' ni con '52' y tiene 10 dígitos (México), anteponer 52
-        if (strlen($cleaned) === 10 && !str_starts_with($cleaned, '+')) {
-            $cleaned = '52' . $cleaned;
+        if (strlen($cleaned) === 10 && ! str_starts_with($cleaned, '+')) {
+            $cleaned = '52'.$cleaned;
         }
 
         return ltrim($cleaned, '+');
@@ -80,8 +85,6 @@ class WhatsAppReportService
     /**
      * Despacha el reporte vía API oficial de WhatsApp Cloud o genera enlace verificado directo.
      *
-     * @param string $phone
-     * @param string $message
      * @return array<string, mixed>
      */
     public function sendOrGenerate(string $phone, string $message): array
@@ -92,7 +95,7 @@ class WhatsAppReportService
         $token = config('services.whatsapp.access_token');
 
         // Modo API Cloud Oficial cuando las credenciales están presentes
-        if (!empty($phoneId) && !empty($token)) {
+        if (! empty($phoneId) && ! empty($token)) {
             try {
                 $response = Http::withToken($token)
                     ->post("{$apiUrl}/{$phoneId}/messages", [
@@ -108,6 +111,7 @@ class WhatsAppReportService
 
                 if ($response->successful()) {
                     Log::info("Reporte enviado vía WhatsApp Cloud API al número: {$sanitizedPhone}");
+
                     return [
                         'success' => true,
                         'mode' => 'api',
@@ -116,16 +120,18 @@ class WhatsAppReportService
                     ];
                 }
 
-                Log::error("Error al enviar WhatsApp Cloud API: " . $response->body());
+                Log::error('Error al enviar WhatsApp Cloud API: '.$response->body());
+
                 return [
                     'success' => false,
                     'mode' => 'api',
                     'phone' => $sanitizedPhone,
-                    'message' => 'Fallo en la API de WhatsApp Cloud: ' . $response->status(),
+                    'message' => 'Fallo en la API de WhatsApp Cloud: '.$response->status(),
                     'error' => $response->json(),
                 ];
             } catch (\Throwable $e) {
-                Log::error("Excepción en WhatsAppReportService: " . $e->getMessage());
+                Log::error('Excepción en WhatsAppReportService: '.$e->getMessage());
+
                 return [
                     'success' => false,
                     'mode' => 'api',
@@ -151,4 +157,3 @@ class WhatsAppReportService
         ];
     }
 }
-

@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class FolioSequence extends Model
 {
     protected $primaryKey = 'year';
+
     public $incrementing = false;
+
     public $timestamps = false;
 
     protected $fillable = [
@@ -25,4 +27,3 @@ class FolioSequence extends Model
         ];
     }
 }
-

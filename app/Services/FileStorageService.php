@@ -18,9 +18,7 @@ class FileStorageService
      * Almacenamiento seguro privado (no accesible directamente vía URL pública).
      * Nombre aleatorizado con UUID para blindaje contra inyección de rutas y colisiones.
      *
-     * @param Incident $incident
-     * @param User $uploader
-     * @param UploadedFile[] $files
+     * @param  UploadedFile[]  $files
      * @return IncidentAttachment[]
      */
     public function storeAttachments(Incident $incident, User $uploader, array $files): array
@@ -28,18 +26,18 @@ class FileStorageService
         $attachments = [];
 
         foreach ($files as $file) {
-            if (!$file instanceof UploadedFile || !$file->isValid()) {
+            if (! $file instanceof UploadedFile || ! $file->isValid()) {
                 continue;
             }
 
             $originalName = $file->getClientOriginalName();
-            $extension    = $file->getClientOriginalExtension() ?: 'bin';
-            $mimeType     = $file->getMimeType() ?? 'application/octet-stream';
-            $fileSize     = $file->getSize();
+            $extension = $file->getClientOriginalExtension() ?: 'bin';
+            $mimeType = $file->getMimeType() ?? 'application/octet-stream';
+            $fileSize = $file->getSize();
 
             // Nombre físico único y criptográfico para evitar sobreescrituras e inyecciones de ruta
-            $safeFileName = Str::uuid()->toString() . '.' . strtolower($extension);
-            $directory    = 'incidents/' . $incident->id;
+            $safeFileName = Str::uuid()->toString().'.'.strtolower($extension);
+            $directory = 'incidents/'.$incident->id;
 
             // Guardar en el disco 'local' privado (storage/app/private/incidents/{id}/)
             $storedPath = $file->storeAs($directory, $safeFileName, 'local');
@@ -74,7 +72,7 @@ class FileStorageService
 
         return response()->file($path, [
             'Content-Type' => $attachment->mime_type,
-            'Content-Disposition' => 'inline; filename="' . addslashes($attachment->original_filename) . '"',
+            'Content-Disposition' => 'inline; filename="'.addslashes($attachment->original_filename).'"',
         ]);
     }
 
@@ -84,5 +82,13 @@ class FileStorageService
     public function download(IncidentAttachment $attachment): StreamedResponse
     {
         return Storage::disk('local')->download($attachment->stored_path, $attachment->original_filename);
+    }
+
+    /**
+     * Elimina todos los archivos físicos asociados a una incidencia en almacenamiento privado.
+     */
+    public function deleteIncidentFiles(Incident $incident): void
+    {
+        Storage::disk('local')->deleteDirectory('incidents/'.$incident->id);
     }
 }
