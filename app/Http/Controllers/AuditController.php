@@ -28,7 +28,7 @@ class AuditController extends Controller
     public function index(Request $request): View
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
-        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: La bitácora de auditoría es exclusiva del Administrador del Sistema.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('audit.view'), 403, 'Acceso denegado: No posee permisos para consultar la bitácora de auditoría.');
         Gate::authorize('viewAudit', Incident::class);
 
         $filters = $request->only([
@@ -74,7 +74,7 @@ class AuditController extends Controller
         NotificationService $notificationService
     ): RedirectResponse {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
-        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: Solo el Administrador puede eliminar incidencias.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('incidents.delete'), 403, 'Acceso denegado: No posee permisos para eliminar incidencias.');
         Gate::authorize('delete', $incident);
 
         $folio = $incident->folio;

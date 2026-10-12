@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\Incident;
 use App\Models\IncidentHistory;
+use App\Models\Role;
 use App\Models\Status;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
 
 class IncidentService
@@ -77,25 +80,156 @@ class IncidentService
     }
 
     /**
-     * Asigna o reasigna un especialista GTS a la incidencia y actualiza el estado operacional.
+     * Retorna el catálogo de áreas responsables disponibles para asignación según los alcances operativos del usuario.
+     *
+     * @return SupportCollection<int, array<string, mixed>>
+     */
+    public function getAssignableAreas(User $user): SupportCollection
+    {
+        $areas = collect();
+
+        // 1. Áreas de roles del sistema según matriz de alcances operativos
+        if ($user->isAdmin()) {
+            $roles = Role::orderBy('name')->get();
+        } else {
+            $assignableRoleIds = $user->assignableRoleIds();
+            $roles = ! empty($assignableRoleIds)
+                ? Role::whereIn('id', $assignableRoleIds)->orderBy('name')->get()
+                : Role::where('slug', 'gts')->get();
+        }
+
+        foreach ($roles as $role) {
+            $areas->push([
+                'code' => $role->slug,
+                'name' => $role->name,
+                'role_id' => $role->id,
+                'badge_bg' => $role->badge_bg ?? 'bg-slate-50',
+                'badge_text' => $role->badge_text ?? 'text-slate-700',
+                'badge_border' => $role->badge_border ?? 'border-slate-200',
+            ]);
+        }
+
+        // 2. Destino técnico externo TICS
+        $canAssignTics = $user->isAdmin() || $user->isGts() || $user->hasPermission('incidents.assign');
+        if ($canAssignTics) {
+            $areas->push([
+                'code' => 'tics',
+                'name' => 'TICS — Área de Tecnologías de Información y Comunicaciones',
+                'role_id' => null,
+                'badge_bg' => 'bg-blue-50',
+                'badge_text' => 'text-blue-700',
+                'badge_border' => 'border-blue-200',
+            ]);
+        }
+
+        return $areas;
+    }
+
+    /**
+     * Asigna o reasigna una incidencia a una o múltiples áreas responsables, y opcionalmente a un especialista técnico.
+     * Soporta los 4 escenarios de negocio:
+     * - Escenario 1: Una sola área, sin usuario.
+     * - Escenario 2: Una sola área y un usuario compatible.
+     * - Escenario 3: Varias áreas, sin usuario.
+     * - Escenario 4: Varias áreas y un usuario compatible.
      *
      * @param  Incident  $incident  Incidencia a asignar
-     * @param  User  $assigner  Usuario autenticado que ejecuta la acción (GTS o Admin)
-     * @param  User  $technician  Especialista GTS asignado como responsable técnico
+     * @param  User  $assigner  Usuario autenticado que ejecuta la acción
+     * @param  array<int, string>  $areas  Códigos de las áreas seleccionadas (ej. ['gts'], ['tics'], ['gts', 'tics'])
+     * @param  User|null  $technician  Especialista opcional asignado como responsable técnico
      * @param  string|null  $comment  Observaciones opcionales sobre la asignación
      */
-    public function assignIncident(Incident $incident, User $assigner, User $technician, ?string $comment = null): Incident
+    public function assign(Incident $incident, User $assigner, array $areas, ?User $technician = null, ?string $comment = null): Incident
     {
-        $isInitialAssignment = is_null($incident->assigned_to_user_id) && ! $incident->isAssignedToTics();
+        // 1. Asegurar que si se provee un técnico, su área esté incluida en $areas
+        if ($technician && $technician->role) {
+            $techRoleSlug = strtolower($technician->role->slug);
+            if (! in_array($techRoleSlug, array_map('strtolower', $areas), true)) {
+                $areas[] = $techRoleSlug;
+            }
+        }
 
-        $incident = DB::transaction(function () use ($incident, $assigner, $technician, $comment, $isInitialAssignment) {
-            $previousTechnician = $incident->isAssignedToTics() ? 'TICS' : ($incident->assignedTo?->name ?? 'Sin asignar');
-            $previousStatus = $incident->status->name;
+        // 2. Resolver metadatos de las áreas asignadas
+        $resolvedAreas = [];
+        foreach ($areas as $code) {
+            $code = strtolower(trim((string) $code));
+            if ($code === 'tics') {
+                $resolvedAreas[] = [
+                    'code' => 'tics',
+                    'name' => 'TICS',
+                    'role_id' => null,
+                ];
+            } else {
+                $role = Role::whereRaw('LOWER(slug) = ?', [$code])->first()
+                    ?? Role::whereRaw('LOWER(name) = ?', [$code])->first();
+                if ($role) {
+                    $resolvedAreas[] = [
+                        'code' => $role->slug,
+                        'name' => $role->name,
+                        'role_id' => $role->id,
+                    ];
+                } else {
+                    $resolvedAreas[] = [
+                        'code' => $code,
+                        'name' => strtoupper($code),
+                        'role_id' => null,
+                    ];
+                }
+            }
+        }
 
-            // 1. Si la incidencia se encuentra en estado NUEVA, transicionar a ASIGNADA (RN-02 / RN-03)
+        // Si por alguna razón la lista de áreas quedó vacía, asignar GTS por defecto
+        if (empty($resolvedAreas)) {
+            $gtsRole = Role::where('slug', 'gts')->first();
+            $resolvedAreas[] = [
+                'code' => 'gts',
+                'name' => $gtsRole?->name ?? 'GTS',
+                'role_id' => $gtsRole?->id,
+            ];
+        }
+
+        $isInitialAssignment = is_null($incident->assigned_to_user_id)
+            && ! $incident->isAssignedToTics()
+            && $incident->assignedAreas()->count() === 0;
+
+        $previousTechnician = $incident->assignedTo?->name
+            ?? ($incident->isAssignedToTics()
+                ? 'TICS'
+                : (! empty($incident->assignedAreaNames())
+                    ? implode(', ', $incident->assignedAreaNames())
+                    : 'Sin asignar'));
+        $previousStatus = $incident->status->name;
+
+        $incident = DB::transaction(function () use (
+            $incident,
+            $assigner,
+            $resolvedAreas,
+            $technician,
+            $comment,
+            $isInitialAssignment,
+            $previousTechnician,
+            $previousStatus
+        ) {
+            $areaNames = array_column($resolvedAreas, 'name');
+            $areaLabels = implode(', ', $areaNames);
+
+            // A. Si la incidencia se encuentra en estado NUEVA, transicionar a ASIGNADA (RN-02 / RN-03)
             if ($incident->status->code === 'NUEVA') {
                 $assignedStatus = Status::where('code', 'ASIGNADA')->firstOrFail();
                 $incident->status_id = $assignedStatus->id;
+
+                $statusComment = $comment;
+                if (empty($statusComment)) {
+                    if ($technician) {
+                        $statusComment = $assigner->id === $technician->id
+                            ? "Incidencia tomada directamente por {$technician->name}."
+                            : "Incidencia asignada a {$technician->name} ({$areaLabels}).";
+                    } elseif (count($resolvedAreas) === 1 && $resolvedAreas[0]['code'] === 'tics') {
+                        $statusComment = "Incidencia asignada al especialista TICS.";
+                    } else {
+                        $statusComment = "Incidencia asignada al área responsable {$areaLabels}.";
+                    }
+                }
 
                 $this->auditService->logAction(
                     incidentId: $incident->id,
@@ -104,51 +238,103 @@ class IncidentService
                     fieldName: 'status_id',
                     oldValue: $previousStatus,
                     newValue: $assignedStatus->name,
-                    comment: $comment ?? ($assigner->id === $technician->id
-                        ? "Incidencia tomada directamente por {$technician->name}."
-                        : "Incidencia asignada a {$technician->name}.")
+                    comment: $statusComment
                 );
             }
 
-            // 2. Actualizar técnico asignado y limpiar especialista asignado
-            $incident->assigned_to_user_id = $technician->id;
-            $incident->assigned_specialist = null;
+            // B. Sincronizar tabla incident_assigned_areas
+            $incident->assignedAreas()->delete();
+            foreach ($resolvedAreas as $area) {
+                $incident->assignedAreas()->create([
+                    'area_code' => $area['code'],
+                    'area_name' => $area['name'],
+                    'role_id' => $area['role_id'],
+                ]);
+            }
+
+            // C. Actualizar columnas en incidents
+            if ($technician) {
+                $incident->assigned_to_user_id = $technician->id;
+                $incident->assigned_specialist = null;
+            } else {
+                $incident->assigned_to_user_id = null;
+                if (count($resolvedAreas) === 1 && $resolvedAreas[0]['code'] === 'tics') {
+                    $incident->assigned_specialist = 'TICS';
+                } else {
+                    $incident->assigned_specialist = $areaLabels;
+                }
+            }
+
             if (is_null($incident->assigned_at)) {
                 $incident->assigned_at = now();
             }
             $incident->save();
 
-            // 3. Registrar auditoría de asignación o reasignación inmutable (RF-08 / RN-04)
+            // D. Registrar auditoría inmutable de asignación / reasignación
             $auditAction = $isInitialAssignment ? 'ASIGNADA' : 'REASIGNADA';
-            $auditComment = $comment;
-            if (empty($auditComment)) {
-                $auditComment = $isInitialAssignment
-                    ? ($assigner->id === $technician->id
-                        ? "El especialista {$technician->name} tomó la responsabilidad técnica de la incidencia."
-                        : "Asignado a {$technician->name} por {$assigner->name}.")
-                    : "Reasignado de {$previousTechnician} a {$technician->name} por {$assigner->name}.";
+
+            if ($technician) {
+                $fieldName = 'assigned_to_user_id';
+                $newValue = $technician->name;
+                $auditComment = $comment;
+                if (empty($auditComment)) {
+                    $auditComment = $isInitialAssignment
+                        ? ($assigner->id === $technician->id
+                            ? "El especialista {$technician->name} tomó la responsabilidad técnica de la incidencia."
+                            : "Asignado a {$technician->name} ({$areaLabels}) por {$assigner->name}.")
+                        : "Reasignado de {$previousTechnician} a {$technician->name} ({$areaLabels}) por {$assigner->name}.";
+                }
+            } else {
+                $fieldName = 'assigned_specialist';
+                $newValue = (count($resolvedAreas) === 1 && $resolvedAreas[0]['code'] === 'tics') ? 'TICS' : $areaLabels;
+                $auditComment = $comment;
+                if (empty($auditComment)) {
+                    $auditComment = $isInitialAssignment
+                        ? "Asignado a {$newValue} por {$assigner->name}."
+                        : "Reasignado de {$previousTechnician} a {$newValue} por {$assigner->name}.";
+                }
             }
 
             $this->auditService->logAction(
                 incidentId: $incident->id,
                 userId: $assigner->id,
                 action: $auditAction,
-                fieldName: 'assigned_to_user_id',
+                fieldName: $fieldName,
                 oldValue: $previousTechnician,
-                newValue: $technician->name,
+                newValue: $newValue,
                 comment: $auditComment
             );
 
-            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
+            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'assignedAreas', 'histories.user', 'attachments']);
         });
 
-        $this->notificationService?->notifyIncidentAssigned($incident, $assigner, $technician, ! $isInitialAssignment);
+        // E. Despachar notificaciones
+        if ($technician) {
+            $this->notificationService?->notifyIncidentAssigned($incident, $assigner, $technician, ! $isInitialAssignment);
+        } elseif (in_array('tics', array_map('strtolower', array_column($resolvedAreas, 'code')), true)) {
+            $this->notificationService?->notifyIncidentAssignedToSpecialist($incident, $assigner, 'TICS', ! $isInitialAssignment);
+        }
 
         return $incident;
     }
 
     /**
-     * Asigna o reasigna un especialista / área externa (ej. TICS) a la incidencia.
+     * Asigna o reasigna un especialista individual a la incidencia (mantiene compatibilidad de llamadas legadas).
+     *
+     * @param  Incident  $incident  Incidencia a asignar
+     * @param  User  $assigner  Usuario autenticado que ejecuta la acción (GTS o Admin)
+     * @param  User  $technician  Especialista asignado como responsable técnico
+     * @param  string|null  $comment  Observaciones opcionales sobre la asignación
+     */
+    public function assignIncident(Incident $incident, User $assigner, User $technician, ?string $comment = null): Incident
+    {
+        $areaSlug = $technician->role?->slug ?? 'gts';
+
+        return $this->assign($incident, $assigner, [$areaSlug], $technician, $comment);
+    }
+
+    /**
+     * Asigna o reasigna un especialista / área externa (ej. TICS) a la incidencia (mantiene compatibilidad legada).
      *
      * @param  Incident  $incident  Incidencia a asignar
      * @param  User  $assigner  Usuario autenticado que ejecuta la acción (GTS o Admin)
@@ -157,61 +343,9 @@ class IncidentService
      */
     public function assignToSpecialist(Incident $incident, User $assigner, string $specialist = 'TICS', ?string $comment = null): Incident
     {
-        $isInitialAssignment = is_null($incident->assigned_to_user_id) && ! $incident->isAssignedToTics();
+        $areaSlug = strtolower($specialist) === 'tics' ? 'tics' : $specialist;
 
-        $incident = DB::transaction(function () use ($incident, $assigner, $specialist, $comment, $isInitialAssignment) {
-            $previousTechnician = $incident->isAssignedToTics() ? 'TICS' : ($incident->assignedTo?->name ?? 'Sin asignar');
-            $previousStatus = $incident->status->name;
-
-            // 1. Si la incidencia se encuentra en estado NUEVA, transicionar a ASIGNADA (RN-02 / RN-03)
-            if ($incident->status->code === 'NUEVA') {
-                $assignedStatus = Status::where('code', 'ASIGNADA')->firstOrFail();
-                $incident->status_id = $assignedStatus->id;
-
-                $this->auditService->logAction(
-                    incidentId: $incident->id,
-                    userId: $assigner->id,
-                    action: 'CAMBIO_ESTADO',
-                    fieldName: 'status_id',
-                    oldValue: $previousStatus,
-                    newValue: $assignedStatus->name,
-                    comment: $comment ?? "Incidencia asignada al especialista {$specialist}."
-                );
-            }
-
-            // 2. Actualizar técnico asignado (null), especialista ('TICS') y timestamp
-            $incident->assigned_to_user_id = null;
-            $incident->assigned_specialist = $specialist;
-            if (is_null($incident->assigned_at)) {
-                $incident->assigned_at = now();
-            }
-            $incident->save();
-
-            // 3. Registrar auditoría inmutable
-            $auditAction = $isInitialAssignment ? 'ASIGNADA' : 'REASIGNADA';
-            $auditComment = $comment;
-            if (empty($auditComment)) {
-                $auditComment = $isInitialAssignment
-                    ? "Asignado a {$specialist} por {$assigner->name}."
-                    : "Reasignado de {$previousTechnician} a {$specialist} por {$assigner->name}.";
-            }
-
-            $this->auditService->logAction(
-                incidentId: $incident->id,
-                userId: $assigner->id,
-                action: $auditAction,
-                fieldName: 'assigned_specialist',
-                oldValue: $previousTechnician,
-                newValue: $specialist,
-                comment: $auditComment
-            );
-
-            return $incident->fresh(['category', 'priority', 'status', 'reportedBy', 'assignedTo', 'histories.user', 'attachments']);
-        });
-
-        $this->notificationService?->notifyIncidentAssignedToSpecialist($incident, $assigner, $specialist, ! $isInitialAssignment);
-
-        return $incident;
+        return $this->assign($incident, $assigner, [$areaSlug], null, $comment);
     }
 
     /**
@@ -229,7 +363,15 @@ class IncidentService
             // 1. Si la incidencia no tenía técnico asignado ni especialista, auto-asignar al técnico que inicia atención (RN-02 / RN-03)
             if (is_null($incident->assigned_to_user_id) && ! $incident->isAssignedToTics()) {
                 $incident->assigned_to_user_id = $user->id;
-                $incident->assigned_at = now();
+                $incident->assigned_at = $incident->assigned_at ?? now();
+
+                if ($user->role && ! $incident->isAssignedToArea($user->role->slug)) {
+                    $incident->assignedAreas()->firstOrCreate([
+                        'area_code' => $user->role->slug,
+                        'area_name' => $user->role->name,
+                        'role_id' => $user->role_id,
+                    ]);
+                }
 
                 $this->auditService->logAction(
                     incidentId: $incident->id,
@@ -435,5 +577,34 @@ class IncidentService
         $this->notificationService?->notifyIncidentClosed($incident, $closer);
 
         return $incident;
+    }
+
+    /**
+     * Retorna los especialistas o técnicos disponibles para asignación según los alcances operativos del usuario.
+     *
+     * @return Collection<int, User>
+     */
+    public function getAvailableTechnicians(?User $user = null): Collection
+    {
+        $query = User::where('is_active', true)->with('role')->orderBy('name', 'asc');
+
+        if ($user) {
+            $assignableRoleIds = $user->assignableRoleIds();
+            if (! empty($assignableRoleIds)) {
+                if ($user->isAdmin()) {
+                    return $query->where(function ($q) use ($assignableRoleIds) {
+                        $q->whereIn('role_id', $assignableRoleIds)
+                            ->where(function ($sq) {
+                                $sq->whereHas('role.permissions', fn ($pq) => $pq->where('slug', 'incidents.attend'))
+                                    ->orWhereHas('role', fn ($rq) => $rq->where('slug', 'gts'));
+                            });
+                    })->get();
+                }
+
+                return $query->whereIn('role_id', $assignableRoleIds)->get();
+            }
+        }
+
+        return $query->whereHas('role', fn ($q) => $q->where('slug', 'gts'))->get();
     }
 }

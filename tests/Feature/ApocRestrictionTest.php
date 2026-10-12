@@ -27,7 +27,11 @@ class ApocRestrictionTest extends TestCase
         $responseDashboard->assertDontSee('Disponibilidad GTS');
         $responseDashboard->assertDontSee('Turno: ACTIVO');
         $responseDashboard->assertSee('Registrar incidencia');
-        $responseDashboard->assertSee('Todas las incidencias');
+        if ($apocUser->hasPermission('incidents.view_all')) {
+            $responseDashboard->assertSee('Todas las incidencias');
+        } else {
+            $responseDashboard->assertDontSee('Todas las incidencias');
+        }
 
         // 2. Profile View
         $responseProfile = $this->actingAs($apocUser)->get(route('profile.edit'));

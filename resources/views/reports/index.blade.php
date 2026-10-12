@@ -34,6 +34,7 @@
                 this.selectAll = false;
             },
             generatePdf() {
+                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('reports.export'))
                 const params = new URLSearchParams(window.location.search);
                 params.delete('selected_ids[]');
                 params.delete('selected_ids');
@@ -41,6 +42,7 @@
                     this.selectedIds.forEach(id => params.append('selected_ids[]', id));
                 }
                 window.open('{{ route('reports.pdf') }}?' + params.toString(), '_blank');
+                @endif
             },
             copyPreview() {
                 const text = $refs.whatsAppText.innerText;
@@ -113,6 +115,7 @@
             </div>
 
             <!-- Acciones Principales de Distribución (Sección 4) -->
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('reports.export'))
             <div class="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
                 <!-- 1. Botón Descargar PDF Institucional -->
                 <button 
@@ -145,6 +148,7 @@
                     <span x-text="selectedIds.length > 0 ? `WhatsApp (${selectedIds.length})` : 'WhatsApp'"></span>
                 </button>
             </div>
+            @endif
         </div>
 
         <!-- SECCIÓN 1: TIPO DE REPORTE (PRESETS RÁPIDOS) -->
@@ -561,7 +565,7 @@
                                             <span>{{ $incident->folio }}</span>
                                             <span class="material-symbols-outlined text-[13px] text-[#707B8A]">open_in_new</span>
                                         </a>
-                                        @if(auth()->user()->isAdmin() || auth()->user()->isGts())
+                                        @if(auth()->user()->isAdmin() || auth()->user()->isGts() || auth()->user()->hasPermission('incidents.view_all'))
                                             @if($incident->isFromCco())
                                                 <span class="inline-flex items-center gap-0.5 mt-0.5 w-fit px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Procedencia: APOC-CCO">CCO</span>
                                             @elseif($incident->isFromCsa())
@@ -644,6 +648,7 @@
             @endif
         </div>
 
+        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('reports.export'))
         <!-- ========================================================================= -->
         <!-- MODAL: ENVIAR POR CORREO ELECTRÓNICO OFICIAL -->
         <!-- ========================================================================= -->
@@ -828,6 +833,7 @@
                 </form>
             </div>
         </div>
+        @endif
 
     </div>
 </x-app-layout>

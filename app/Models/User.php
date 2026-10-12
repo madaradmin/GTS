@@ -189,4 +189,162 @@ class User extends Authenticatable
     {
         return "|{$this->getRoleTag()}| {$this->name}";
     }
+
+    /**
+     * Comprueba si el usuario tiene un permiso específico (admin posee bypass total).
+     */
+    public function hasPermission(string $permission): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if (! $this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role?->hasPermission($permission) ?? false;
+    }
+
+    /**
+     * Comprueba si el usuario tiene al menos uno de los permisos indicados.
+     *
+     * @param  array<int, string>  $permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Comprueba si el usuario tiene todos los permisos indicados.
+     *
+     * @param  array<int, string>  $permissions
+     */
+    public function hasAllPermissions(array $permissions): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        foreach ($permissions as $permission) {
+            if (! $this->hasPermission($permission)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Comprueba si el usuario puede visualizar incidencias de un rol específico.
+     */
+    public function canViewRole(Role|int|string $role): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if (! $this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role?->canViewRole($role) ?? false;
+    }
+
+    /**
+     * Comprueba si el usuario puede atender incidencias de un rol específico.
+     */
+    public function canAttendRole(Role|int|string $role): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if (! $this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role?->canAttendRole($role) ?? false;
+    }
+
+    /**
+     * Comprueba si el usuario puede asignar incidencias a un rol específico.
+     */
+    public function canAssignToRole(Role|int|string $role): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        if (! $this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role?->canAssignToRole($role) ?? false;
+    }
+
+    /**
+     * Retorna los IDs de roles que el usuario puede visualizar.
+     *
+     * @return array<int, int>
+     */
+    public function visibleRoleIds(): array
+    {
+        if ($this->isAdmin()) {
+            return Role::pluck('id')->all();
+        }
+
+        if (! $this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role?->visibleRoleIds() ?? [];
+    }
+
+    /**
+     * Retorna los IDs de roles cuyas incidencias el usuario puede atender.
+     *
+     * @return array<int, int>
+     */
+    public function attendableRoleIds(): array
+    {
+        if ($this->isAdmin()) {
+            return Role::pluck('id')->all();
+        }
+
+        if (! $this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role?->attendableRoleIds() ?? [];
+    }
+
+    /**
+     * Retorna los IDs de roles a los cuales el usuario puede asignar incidencias.
+     *
+     * @return array<int, int>
+     */
+    public function assignableRoleIds(): array
+    {
+        if ($this->isAdmin()) {
+            return Role::pluck('id')->all();
+        }
+
+        if (! $this->relationLoaded('role')) {
+            $this->load('role');
+        }
+
+        return $this->role?->assignableRoleIds() ?? [];
+    }
 }

@@ -210,7 +210,7 @@
                 <span>GTS • Canal Operacional Seguro</span>
             </span>
             <span class="text-[#8D98A8] font-sans">
-                {{ auth()->user()->isGts() ? 'Perfil GTS' : (auth()->user()->isApoc() ? 'Perfil APOC' : 'Perfil Admin') }}
+                {{ auth()->user()->isGts() ? 'Perfil GTS' : (auth()->user()->isApoc() ? 'Perfil APOC' : (auth()->user()->isAdmin() ? 'Perfil Admin' : 'Perfil ' . (auth()->user()->role?->name ?? 'Usuario'))) }}
             </span>
         </div>
     </div>

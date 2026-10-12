@@ -100,7 +100,7 @@ class Incident extends Model
      */
     public function getOriginGroupAttribute(): ?string
     {
-        if (! $this->relationLoaded('reportedBy')) {
+        if (! $this->relationLoaded('reportedBy') && $this->exists) {
             $this->load('reportedBy.role');
         }
 
@@ -141,6 +141,84 @@ class Incident extends Model
     }
 
     /**
+     * Obtiene los metadatos visuales del distintivo táctico de procedencia (área emisora).
+     * Soporta roles fijos (CCO, CSA, GTS, ADMIN) y cualquier rol personalizado actual y futuro.
+     *
+     * @return array{label: string, title: string, bg: string, text: string, border: string}|null
+     */
+    public function getOriginBadgeAttribute(): ?array
+    {
+        if (! $this->relationLoaded('reportedBy') && $this->exists) {
+            $this->load('reportedBy.role');
+        }
+
+        $reporter = $this->reportedBy;
+        if (! $reporter) {
+            return null;
+        }
+
+        // 1. APOC-CCO
+        if ($this->isFromCco()) {
+            return [
+                'label' => 'CCO',
+                'title' => 'Procedencia: APOC-CCO',
+                'bg' => 'bg-amber-500/10',
+                'text' => 'text-amber-400',
+                'border' => 'border-amber-500/20',
+            ];
+        }
+
+        // 2. APOC-CSA
+        if ($this->isFromCsa()) {
+            return [
+                'label' => 'CSA',
+                'title' => 'Procedencia: APOC-CSA',
+                'bg' => 'bg-orange-500/10',
+                'text' => 'text-orange-400',
+                'border' => 'border-orange-500/20',
+            ];
+        }
+
+        // 3. GTS
+        if ($this->isFromGts()) {
+            return [
+                'label' => 'GTS',
+                'title' => 'Procedencia: GTS',
+                'bg' => 'bg-cyan-500/10',
+                'text' => 'text-cyan-400',
+                'border' => 'border-cyan-500/20',
+            ];
+        }
+
+        // 4. Administrador
+        if ($this->isFromAdmin()) {
+            return [
+                'label' => 'ADMIN',
+                'title' => 'Procedencia: Administrador',
+                'bg' => 'bg-purple-500/10',
+                'text' => 'text-purple-400',
+                'border' => 'border-purple-500/20',
+            ];
+        }
+
+        // 5. Roles personalizados o dinámicos presentes y futuros
+        $role = $reporter->role;
+        $label = $role?->name ?? $this->origin_group ?? 'GTS';
+
+        $bg = ! empty($role?->badge_bg) ? $role->badge_bg : 'bg-slate-500/10';
+        $text = ! empty($role?->badge_text) ? $role->badge_text : 'text-slate-400';
+        $border = ! empty($role?->badge_border) ? $role->badge_border : 'border-slate-500/20';
+
+        return [
+            'label' => $label,
+            'title' => 'Procedencia: ' . $label,
+            'bg' => $bg,
+            'text' => $text,
+            'border' => $border,
+        ];
+    }
+
+    /**
      * Comprueba si la incidencia fue reportada por un operador del grupo APOC-CCO.
      */
     public function isFromCco(): bool
@@ -178,6 +256,50 @@ class Incident extends Model
     public function assignedTo(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
+    /**
+     * Áreas o departamentos responsables asignados a la incidencia.
+     */
+    public function assignedAreas(): HasMany
+    {
+        return $this->hasMany(IncidentAssignedArea::class);
+    }
+
+    /**
+     * Retorna la lista de códigos de áreas asignadas.
+     *
+     * @return array<int, string>
+     */
+    public function assignedAreaCodes(): array
+    {
+        if ($this->relationLoaded('assignedAreas')) {
+            return $this->assignedAreas->pluck('area_code')->all();
+        }
+
+        return $this->assignedAreas()->pluck('area_code')->all();
+    }
+
+    /**
+     * Retorna la lista de nombres visibles de áreas asignadas.
+     *
+     * @return array<int, string>
+     */
+    public function assignedAreaNames(): array
+    {
+        if ($this->relationLoaded('assignedAreas')) {
+            return $this->assignedAreas->pluck('area_name')->all();
+        }
+
+        return $this->assignedAreas()->pluck('area_name')->all();
+    }
+
+    /**
+     * Determina si la incidencia está asignada a un área específica.
+     */
+    public function isAssignedToArea(string $areaCode): bool
+    {
+        return in_array(strtolower($areaCode), array_map('strtolower', $this->assignedAreaCodes()), true);
     }
 
     /**
@@ -226,6 +348,7 @@ class Incident extends Model
                 ->orWhereHas('category', fn ($c) => $c->where('name', $like, "%{$term}%"))
                 ->orWhereHas('reportedBy', fn ($u) => $u->where('name', $like, "%{$term}%")->orWhere('badge_number', $like, "%{$term}%"))
                 ->orWhereHas('assignedTo', fn ($u) => $u->where('name', $like, "%{$term}%"))
+                ->orWhereHas('assignedAreas', fn ($a) => $a->where('area_name', $like, "%{$term}%")->orWhere('area_code', $like, "%{$term}%"))
                 ->orWhere('incidents.assigned_specialist', $like, "%{$term}%");
         });
     }
@@ -235,7 +358,7 @@ class Incident extends Model
      */
     public function isAssignedToTics(): bool
     {
-        return $this->assigned_specialist === 'TICS';
+        return $this->assigned_specialist === 'TICS' || $this->isAssignedToArea('tics');
     }
 
     /**
@@ -243,11 +366,24 @@ class Incident extends Model
      */
     public function getSpecialistNameAttribute(): ?string
     {
+        if ($this->assignedTo) {
+            return $this->assignedTo->name;
+        }
+
+        if ($this->isAssignedToTics() && (empty($this->assignedAreaCodes()) || $this->assignedAreaCodes() === ['tics'])) {
+            return 'TICS';
+        }
+
+        $names = $this->assignedAreaNames();
+        if (! empty($names)) {
+            return implode(', ', $names);
+        }
+
         if ($this->isAssignedToTics()) {
             return 'TICS';
         }
 
-        return $this->assignedTo?->name;
+        return null;
     }
 
     /**
@@ -289,34 +425,170 @@ class Incident extends Model
     }
 
     /**
-     * Scope para aplicar visibilidad de incidencias según el perfil del usuario autenticado.
-     * APOC-CCO: únicamente incidencias del ámbito CCO (propias y de otros operadores CCO).
-     * APOC-CSA: únicamente incidencias del ámbito CSA (propias y de otros operadores CSA).
-     * GTS y ADMINISTRADOR: visibilidad global sin restricción.
+     * Scope para aplicar visibilidad dinámica de incidencias según permisos y alcances operativos del usuario.
      */
-    public function scopeForUserScope(Builder $query, ?User $user): Builder
+    public function scopeVisibleToUser(Builder $query, ?User $user = null): Builder
     {
+        $user = $user ?? \Illuminate\Support\Facades\Auth::user();
+
         if (! $user) {
             return $query;
         }
 
-        if ($user->isAdmin() || $user->isGts()) {
+        if ($user->isAdmin() || $user->hasPermission('incidents.view_all')) {
             return $query;
         }
 
-        if ($user->isApocCco()) {
-            return $query->forCco();
+        $canViewAssigned = $user->hasPermission('incidents.view_assigned');
+        $canViewDepartment = $user->hasPermission('incidents.view_department');
+        $isUnseededFallback = ! \App\Models\Permission::exists() && ($user->isGts() || $user->isApoc());
+
+        if (! $canViewAssigned && ! $canViewDepartment && ! $isUnseededFallback) {
+            return $query->whereRaw('1 = 0');
         }
 
-        if ($user->isApocCsa()) {
-            return $query->forCsa();
+        return $query->where(function (Builder $sub) use ($user, $canViewAssigned, $canViewDepartment, $isUnseededFallback) {
+            $applied = true;
+            $sub->where('incidents.reported_by_user_id', $user->id);
+
+            if ($canViewAssigned) {
+                $sub->orWhere('incidents.assigned_to_user_id', $user->id);
+                if ($user->role_id) {
+                    $sub->orWhereHas('assignedAreas', fn (Builder $aq) => $aq->where('role_id', $user->role_id));
+                }
+            }
+
+            if ($canViewDepartment) {
+                $deptCondition = function (Builder $dq) use ($user) {
+                    $dq->where('incidents.reported_by_user_id', $user->id);
+
+                    $visibleRoleIds = $user->visibleRoleIds();
+                    if (! empty($visibleRoleIds)) {
+                        $dq->orWhereHas('reportedBy', function (Builder $rq) use ($visibleRoleIds) {
+                            $rq->whereIn('role_id', $visibleRoleIds);
+                        })->orWhereHas('assignedAreas', function (Builder $aq) use ($visibleRoleIds) {
+                            $aq->whereIn('role_id', $visibleRoleIds);
+                        });
+                    }
+
+                    if ($user->isApocCco()) {
+                        $dq->orWhere(fn (Builder $q) => $q->forCco());
+                    }
+
+                    if ($user->isApocCsa()) {
+                        $dq->orWhere(fn (Builder $q) => $q->forCsa());
+                    }
+                };
+
+                if ($applied) {
+                    $sub->orWhere($deptCondition);
+                } else {
+                    $sub->where($deptCondition);
+                    $applied = true;
+                }
+            }
+
+            if ($isUnseededFallback) {
+                if ($user->isGts()) {
+                    if ($applied) {
+                        $sub->orWhereRaw('1 = 1');
+                    } else {
+                        $sub->whereRaw('1 = 1');
+                    }
+                } else {
+                    $unseededCondition = function (Builder $uq) use ($user) {
+                        $uq->where('incidents.reported_by_user_id', $user->id)
+                            ->orWhere('incidents.assigned_to_user_id', $user->id);
+                        if ($user->isApocCco()) {
+                            $uq->orWhere(fn (Builder $q) => $q->forCco());
+                        }
+                        if ($user->isApocCsa()) {
+                            $uq->orWhere(fn (Builder $q) => $q->forCsa());
+                        }
+                    };
+
+                    if ($applied) {
+                        $sub->orWhere($unseededCondition);
+                    } else {
+                        $sub->where($unseededCondition);
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Scope para aplicar visibilidad de incidencias según el perfil del usuario autenticado.
+     * Mantiene compatibilidad delegando a scopeVisibleToUser.
+     */
+    public function scopeForUserScope(Builder $query, ?User $user): Builder
+    {
+        return $this->scopeVisibleToUser($query, $user);
+    }
+
+    /**
+     * Scope para filtrar incidencias que el usuario tiene permitido atender/tomar.
+     */
+    public function scopeAttendableByUser(Builder $query, ?User $user): Builder
+    {
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
         }
 
-        if ($user->isApoc()) {
-            return $query->where('incidents.reported_by_user_id', $user->id);
+        if (! $user->isAdmin() && ! $user->isGts() && ! $user->hasPermission('incidents.attend')) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return $query;
+        $query->whereHas('status', fn (Builder $sq) => $sq->whereIn('code', ['NUEVA', 'ASIGNADA', 'EN_ATENCION']));
+
+        if ($user->isAdmin() || $user->isGts() || $user->hasPermission('incidents.view_all')) {
+            return $query;
+        }
+
+        $attendableRoleIds = $user->attendableRoleIds();
+
+        return $query->where(function (Builder $sub) use ($user, $attendableRoleIds) {
+            $sub->where('incidents.assigned_to_user_id', $user->id);
+
+            if (! empty($attendableRoleIds)) {
+                $sub->orWhereHas('reportedBy', function (Builder $rq) use ($attendableRoleIds) {
+                    $rq->whereIn('role_id', $attendableRoleIds);
+                });
+            }
+        });
+    }
+
+    /**
+     * Scope para filtrar incidencias que el usuario tiene permitido asignar.
+     */
+    public function scopeAssignableByUser(Builder $query, ?User $user): Builder
+    {
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if (! $user->isAdmin() && ! $user->isGts() && ! $user->hasPermission('incidents.assign')) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->whereHas('status', fn (Builder $sq) => $sq->where('is_terminal', false));
+
+        if ($user->isAdmin() || $user->isGts() || $user->hasPermission('incidents.view_all')) {
+            return $query;
+        }
+
+        $visibleRoleIds = $user->visibleRoleIds();
+
+        return $query->where(function (Builder $sub) use ($user, $visibleRoleIds) {
+            $sub->where('incidents.reported_by_user_id', $user->id)
+                ->orWhere('incidents.assigned_to_user_id', $user->id);
+
+            if (! empty($visibleRoleIds)) {
+                $sub->orWhereHas('reportedBy', function (Builder $rq) use ($visibleRoleIds) {
+                    $rq->whereIn('role_id', $visibleRoleIds);
+                });
+            }
+        });
     }
 
     /**

@@ -46,7 +46,7 @@ class IncidentController extends Controller
         $filters = $request->only(['search', 'status_id', 'priority_id', 'category_id', 'assigned_to', 'reported_by']);
 
         // Aislamiento estricto de incidencias por ámbito operativo según rol del usuario
-        $query = Incident::with(['category', 'priority', 'status', 'reportedBy.role', 'assignedTo'])
+        $query = Incident::with(['category', 'priority', 'status', 'reportedBy.role', 'assignedTo', 'assignedAreas.role'])
             ->forUserScope($user);
 
         $incidents = $query->filter($filters)
@@ -67,7 +67,7 @@ class IncidentController extends Controller
 
         $baseMetricsQuery = Incident::query()->forUserScope($user);
         if ($request->routeIs('incidents.my')) {
-            if ($user->isGts() && ! empty($filters['assigned_to'])) {
+            if (($user->isGts() || $user->hasPermission('incidents.attend')) && ! empty($filters['assigned_to'])) {
                 $baseMetricsQuery->where('assigned_to_user_id', $filters['assigned_to']);
             } elseif (! empty($filters['reported_by'])) {
                 $baseMetricsQuery->where('reported_by_user_id', $filters['reported_by']);
@@ -103,9 +103,9 @@ class IncidentController extends Controller
 
         $user = $request->user();
 
-        if ($user->isGts()) {
+        if ($user->isGts() || ($user->hasPermission('incidents.attend') && ! $user->isAdmin() && ! $user->isApoc())) {
             $request->merge(['assigned_to' => $user->id]);
-        } elseif ($user->isApoc()) {
+        } elseif ($user->isApoc() || (! $user->isAdmin() && ! $user->hasPermission('incidents.attend'))) {
             $request->merge(['reported_by' => $user->id]);
         } elseif ($user->isAdmin() && ! $request->has('assigned_to') && ! $request->has('reported_by')) {
             $request->merge(['reported_by' => $user->id]);
@@ -157,53 +157,54 @@ class IncidentController extends Controller
             'priority',
             'status',
             'reportedBy.role',
-            'assignedTo',
+            'assignedTo.role',
+            'assignedAreas.role',
             'histories.user',
             'attachments.uploadedBy',
         ]);
 
-        $gtsUsers = User::where('is_active', true)
-            ->whereHas('role', fn ($q) => $q->where('slug', 'gts'))
-            ->with('role')
-            ->orderBy('name', 'asc')
-            ->get();
+        $currentUser = request()->user();
+        $availableAreas = $this->incidentService->getAssignableAreas($currentUser);
+        $availableTechnicians = $this->incidentService->getAvailableTechnicians($currentUser);
+        $gtsUsers = $availableTechnicians;
 
-        return view('incidents.show', compact('incident', 'gtsUsers'));
+        return view('incidents.show', compact('incident', 'gtsUsers', 'availableAreas', 'availableTechnicians'));
     }
 
     /**
-     * Asigna o reasigna un especialista GTS a la incidencia.
+     * Asigna o reasigna áreas responsables y un especialista técnico a la incidencia.
      */
     public function assign(AssignIncidentRequest $request, Incident $incident): RedirectResponse
     {
         Gate::authorize('assign', $incident);
 
-        $assignedValue = $request->validated('assigned_to_user_id');
+        $areas = (array) $request->validated('areas', []);
+        $technicianId = $request->validated('assigned_to_user_id');
+        $comment = $request->validated('comment');
 
-        if (strtolower((string) $assignedValue) === 'tics') {
-            $this->incidentService->assignToSpecialist(
-                incident: $incident,
-                assigner: $request->user(),
-                specialist: 'TICS',
-                comment: $request->validated('comment')
-            );
+        $technician = $technicianId && is_numeric($technicianId)
+            ? User::find($technicianId)
+            : null;
 
-            $message = "Incidencia {$incident->folio} asignada al especialista TICS exitosamente.";
-        } else {
-            $technician = User::findOrFail($assignedValue);
+        $this->incidentService->assign(
+            incident: $incident,
+            assigner: $request->user(),
+            areas: $areas,
+            technician: $technician,
+            comment: $comment
+        );
 
-            $this->incidentService->assignIncident(
-                incident: $incident,
-                assigner: $request->user(),
-                technician: $technician,
-                comment: $request->validated('comment')
-            );
-
+        if ($technician) {
             $isSelfAssign = $request->user()->id === $technician->id;
-
             $message = $isSelfAssign
                 ? "Has tomado la responsabilidad técnica de la incidencia {$incident->folio}."
                 : "Incidencia {$incident->folio} asignada al especialista {$technician->name} exitosamente.";
+        } elseif (count($areas) === 1 && strtolower($areas[0]) === 'tics') {
+            $message = "Incidencia {$incident->folio} asignada al especialista TICS exitosamente.";
+        } else {
+            $areaNames = $incident->fresh()->assignedAreaNames();
+            $label = ! empty($areaNames) ? implode(', ', $areaNames) : 'las áreas seleccionadas';
+            $message = "Incidencia {$incident->folio} asignada exitosamente al área responsable: {$label}.";
         }
 
         return redirect()->route('incidents.show', $incident->folio)
@@ -305,7 +306,7 @@ class IncidentController extends Controller
         FileStorageService $fileStorageService
     ): RedirectResponse {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
-        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: Solo el Administrador puede eliminar incidencias.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('incidents.delete'), 403, 'Acceso denegado: No posee permisos para eliminar incidencias.');
         Gate::authorize('delete', $incident);
 
         $folio = $incident->folio;

@@ -290,7 +290,63 @@
                 </div>
 
                 <!-- Fila C: Tabla "Últimas incidencias" (Optimizado a 5 Columnas Esenciales - Cero Scroll Horizontal) -->
-                <div class="bg-brand-surface border border-brand-border rounded-xl shadow-enterprise flex flex-col flex-1 min-h-0 overflow-hidden hover:border-[#2A3440] transition-all">
+                <div 
+                    x-data="{
+                        timer: null,
+                        lastEtag: null,
+                        isPolling: false,
+                        init() {
+                            // Iniciar sondeo táctico continuo cada 4 segundos
+                            this.timer = setInterval(() => this.poll(), 4000);
+
+                            // Sondeo reactivo inmediato cuando la pestaña recupera el foco
+                            document.addEventListener('visibilitychange', () => {
+                                if (document.visibilityState === 'visible') {
+                                    this.poll();
+                                }
+                            });
+                        },
+                        destroy() {
+                            if (this.timer) clearInterval(this.timer);
+                        },
+                        async poll() {
+                            if (this.isPolling) return;
+                            this.isPolling = true;
+                            try {
+                                const headers = {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'text/html'
+                                };
+                                if (this.lastEtag) {
+                                    headers['If-None-Match'] = this.lastEtag;
+                                }
+
+                                const response = await fetch('{{ route('dashboard.recent-incidents') }}', { headers });
+
+                                // Si la respuesta es 304 Not Modified, los datos están sincronizados sin cambios
+                                if (response.status === 304) {
+                                    return;
+                                }
+
+                                if (response.ok) {
+                                    const etag = response.headers.get('ETag');
+                                    if (etag) {
+                                        this.lastEtag = etag;
+                                    }
+                                    const html = await response.text();
+                                    if (this.$refs.recentTableBody && html.trim() !== this.$refs.recentTableBody.innerHTML.trim()) {
+                                        this.$refs.recentTableBody.innerHTML = html.trim();
+                                    }
+                                }
+                            } catch (error) {
+                                // Red resiliente: fallo silencioso ante cortes momentáneos de conectividad
+                            } finally {
+                                this.isPolling = false;
+                            }
+                        }
+                    }"
+                    class="bg-brand-surface border border-brand-border rounded-xl shadow-enterprise flex flex-col flex-1 min-h-0 overflow-hidden hover:border-[#2A3440] transition-all"
+                >
                     
                     <!-- Encabezado de la Tabla -->
                     <div class="px-3.5 py-1.5 border-b border-[#202731] flex items-center justify-between shrink-0 bg-[#0D1117]">
@@ -298,10 +354,12 @@
                             <h2 class="text-xs font-bold text-[#F2F5F8]">
                                 Últimas incidencias
                             </h2>
-                            <span class="px-2 py-0.5 rounded-full bg-[#151B23] text-[10px] font-mono text-[#7E8998] border border-[#202731]">
-                                En tiempo real
+                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#151B23] text-[10px] font-mono text-[#7E8998] border border-[#202731]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span>En tiempo real</span>
                             </span>
                         </div>
+                        @can('viewAny', App\Models\Incident::class)
                         <a 
                             href="{{ route('incidents.index') }}" 
                             class="text-[11px] font-medium text-[#3D82C6] hover:text-[#6FA2D2] flex items-center gap-1 transition-colors group"
@@ -309,6 +367,7 @@
                             <span>Ver todas las incidencias</span>
                             <span class="text-[13px] group-hover:translate-x-0.5 transition-transform">→</span>
                         </a>
+                        @endcan
                     </div>
 
                     <!-- Tabla de Incidencias -->
@@ -323,56 +382,11 @@
                                     <th class="py-1.5 px-3.5">Prioridad</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-[#202731] text-[11px] text-[#DDE3EA]">
-                                @if($recentIncidents->isNotEmpty())
-                                    @foreach($recentIncidents->take(5) as $inc)
-                                        <tr 
-                                            onclick="window.location='{{ route('incidents.show', $inc->folio) }}'"
-                                            class="hover:bg-[#151B23] cursor-pointer transition-colors group"
-                                            title="Ver expediente {{ $inc->folio }}"
-                                        >
-                                            <td class="py-1.5 px-3.5 font-mono font-bold text-[#3D82C6] whitespace-nowrap">
-                                                <div class="flex items-center gap-1.5">
-                                                    <a href="{{ route('incidents.show', $inc->folio) }}" class="group-hover:underline">
-                                                        {{ $inc->folio }}
-                                                    </a>
-                                                    @if($inc->isFromCco())
-                                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[8.5px] font-bold font-mono tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Procedencia: APOC-CCO">CCO</span>
-                                                    @elseif($inc->isFromCsa())
-                                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[8.5px] font-bold font-mono tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20" title="Procedencia: APOC-CSA">CSA</span>
-                                                    @elseif($inc->isFromGts())
-                                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[8.5px] font-bold font-mono tracking-wider bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" title="Procedencia: GTS">GTS</span>
-                                                    @elseif($inc->isFromAdmin())
-                                                        <span class="inline-flex items-center px-1 py-0.2 rounded text-[8.5px] font-bold font-mono tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20" title="Procedencia: Administrador">ADMIN</span>
-                                                    @endif
-                                                </div>
-                                            </td>
-                                            <td class="py-1.5 px-3.5 text-[#7E8998] font-mono whitespace-nowrap">
-                                                {{ $inc->created_at->format('d/m/Y H:i') }}
-                                            </td>
-                                            <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                                <span class="flex items-center gap-1.5">
-                                                    <span class="material-symbols-outlined text-[15px] text-[#707B8A]">
-                                                        {{ $inc->category?->slug === 'cctv' ? 'videocam' : ($inc->category?->slug === 'control-acceso' ? 'door_front' : ($inc->category?->slug === 'fids' ? 'tv' : 'radio')) }}
-                                                    </span>
-                                                    <span>{{ $inc->category?->name ?? 'CCTV' }}</span>
-                                                </span>
-                                            </td>
-                                            <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                                <x-badge-status :status="$inc->status" />
-                                            </td>
-                                            <td class="py-1.5 px-3.5 whitespace-nowrap">
-                                                <x-badge-priority :priority="$inc->priority" />
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                @else
-                                    <tr>
-                                        <td colspan="5" class="py-6 text-center text-xs text-[#7E8998]">
-                                            No hay incidencias registradas en el sistema.
-                                        </td>
-                                    </tr>
-                                @endif
+                            <tbody 
+                                x-ref="recentTableBody"
+                                class="divide-y divide-[#202731] text-[11px] text-[#DDE3EA]"
+                            >
+                                @include('dashboard.partials.recent-incidents-rows', ['recentIncidents' => $recentIncidents])
                             </tbody>
                         </table>
                     </div>
@@ -441,7 +455,7 @@
                         </h2>
 
                         <div class="space-y-1.5">
-                            <!-- Botón 1: Registrar incidencia (Azul Royal Sólido) -->
+                            {{-- Botón 1: Registrar incidencia (Azul Royal Sólido) --}}
                             @can('create', App\Models\Incident::class)
                                 <a 
                                     href="{{ route('incidents.create') }}"
@@ -457,7 +471,8 @@
                                 </a>
                             @endcan
 
-                            <!-- Botón 2: Consultar incidencias -->
+                            {{-- Botón 2: Consultar incidencias --}}
+                            @can('viewAny', App\Models\Incident::class)
                             <a 
                                 href="{{ route('incidents.index') }}"
                                 class="w-full p-1.5 rounded-lg bg-[#0F141B] border border-[#252C35] hover:border-[#2A3440] hover:bg-[#151A21] text-[#E2E7ED] flex items-center gap-2.5 transition-all group"
@@ -470,6 +485,7 @@
                                     <span class="text-[9px] text-[#8A95A4]">Buscar y filtrar reportes</span>
                                 </div>
                             </a>
+                            @endcan
 
                             <!-- Botón 3: Ver indicadores -->
                             <a 
@@ -485,7 +501,8 @@
                                 </div>
                             </a>
 
-                            <!-- Botón 4: Descargar reporte -->
+                            {{-- Botón 4: Descargar reporte --}}
+                            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('reports.view'))
                             <a 
                                 href="{{ route('reports.index') }}"
                                 class="w-full p-1.5 rounded-lg bg-[#0F141B] border border-[#252C35] hover:border-[#2A3440] hover:bg-[#151A21] text-[#E2E7ED] flex items-center gap-2.5 transition-all group"
@@ -499,6 +516,7 @@
                                     <span class="text-[9px] text-[#8A95A4]">Exportar información</span>
                                 </div>
                             </a>
+                            @endif
                         </div>
                     </div>
 

@@ -202,6 +202,11 @@ class ApocMisIncidenciasPhase3Test extends TestCase
      */
     public function test_sidebar_displays_mis_incidencias_in_correct_order_for_apoc(): void
     {
+        $viewAllPerm = \App\Models\Permission::where('slug', 'incidents.view_all')->first();
+        if ($viewAllPerm) {
+            $this->juanCco->role->permissions()->syncWithoutDetaching([$viewAllPerm->id]);
+        }
+
         $response = $this->actingAs($this->juanCco)->get(route('dashboard'));
 
         $response->assertOk();

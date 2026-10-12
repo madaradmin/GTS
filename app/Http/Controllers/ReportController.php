@@ -31,6 +31,7 @@ class ReportController extends Controller
     public function index(Request $request): View
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('reports.view'), 403, 'Acceso denegado: No posee permisos para consultar reportes.');
 
         $filters = $request->only([
             'report_type',
@@ -141,6 +142,7 @@ class ReportController extends Controller
     public function exportPdf(Request $request): Response|RedirectResponse
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('reports.export'), 403, 'Acceso denegado: No posee permisos para exportar reportes.');
 
         $filters = $request->only([
             'report_type',
@@ -202,6 +204,7 @@ class ReportController extends Controller
     public function sendEmail(Request $request): RedirectResponse
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('reports.export'), 403, 'Acceso denegado: No posee permisos para exportar reportes.');
 
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -242,6 +245,7 @@ class ReportController extends Controller
     public function shareWhatsApp(Request $request): JsonResponse|RedirectResponse
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('reports.export'), 403, 'Acceso denegado: No posee permisos para exportar reportes.');
 
         $validated = $request->validate([
             'phone' => ['required', 'string', 'min:10', 'max:25'],

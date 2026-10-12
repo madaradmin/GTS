@@ -31,6 +31,10 @@ class CloseIncidentTest extends TestCase
     public function test_gts_user_can_give_vobo_and_close_incident(): void
     {
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
+        $voboPerm = \App\Models\Permission::where('slug', 'incidents.vobo_close')->first();
+        if ($voboPerm) {
+            $gtsUser->role->permissions()->syncWithoutDetaching([$voboPerm->id]);
+        }
         $incident = Incident::factory()->resuelta()->create();
 
         $this->assertNull($incident->closed_at);

@@ -15,7 +15,7 @@
             </div>
             <div class="flex items-center gap-2 self-start md:self-auto bg-surface-container-low px-4 py-2 rounded-xl border border-border-subtle shadow-sm">
                 <span class="w-2.5 h-2.5 rounded-full bg-status-resolved animate-pulse"></span>
-                <span class="text-xs text-on-surface uppercase tracking-wider font-semibold">{{ auth()->user()->isGts() ? 'Canal GTS Activo' : (auth()->user()->isApocCco() ? 'Canal APOC-CCO Activo' : (auth()->user()->isApocCsa() ? 'Canal APOC-CSA Activo' : (auth()->user()->isApoc() ? 'Canal APOC Activo' : 'Canal Administrador Activo'))) }}</span>
+                <span class="text-xs text-on-surface uppercase tracking-wider font-semibold">{{ auth()->user()->isGts() ? 'Canal GTS Activo' : (auth()->user()->isApocCco() ? 'Canal APOC-CCO Activo' : (auth()->user()->isApocCsa() ? 'Canal APOC-CSA Activo' : (auth()->user()->isApoc() ? 'Canal APOC Activo' : (auth()->user()->isAdmin() ? 'Canal Administrador Activo' : 'Canal ' . (auth()->user()->role?->name ?? 'Usuario') . ' Activo')))) }}</span>
             </div>
         </div>
 

@@ -194,8 +194,17 @@ class DashboardService
     /**
      * Retorna el número de especialistas técnicos GTS activos en plataforma.
      */
-    public function getActiveTechniciansCount(): int
+    public function getActiveTechniciansCount(?User $user = null): int
     {
+        if ($user && ! $user->isAdmin()) {
+            $assignable = $user->assignableRoleIds();
+            if (! empty($assignable)) {
+                return User::whereIn('role_id', $assignable)
+                    ->where('is_active', true)
+                    ->count();
+            }
+        }
+
         return User::whereHas('role', fn ($q) => $q->where('slug', 'gts'))
             ->where('is_active', true)
             ->count();
@@ -276,7 +285,7 @@ class DashboardService
     {
         $query = IncidentHistory::with(['incident', 'user']);
 
-        if ($user && ! $user->isAdmin() && ! $user->isGts()) {
+        if ($user && ! $user->isAdmin() && ! $user->isGts() && ! $user->hasPermission('incidents.view_all')) {
             $query->whereHas('incident', fn ($q) => $q->forUserScope($user));
         }
 

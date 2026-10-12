@@ -54,9 +54,9 @@
                             <span class="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
                             APOC-CSA
                         </span>
-                    @elseif($incident->origin_group)
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-xs font-mono uppercase tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/30">
-                            {{ $incident->origin_group }}
+                    @elseif($badge = $incident->origin_badge)
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-xs font-mono uppercase tracking-wider {{ $badge['bg'] }} {{ $badge['text'] }} border {{ $badge['border'] }}" title="{{ $badge['title'] }}">
+                            {{ $badge['label'] }}
                         </span>
                     @endif
 
@@ -72,8 +72,8 @@
 
             <!-- Botones de Acción Táctica -->
             <div class="flex flex-wrap items-center gap-2.5 self-start lg:self-center">
-                @can('assign', $incident)
-                    @if(is_null($incident->assigned_to_user_id) && auth()->user()->isGts())
+                @can('take', $incident)
+                    @if(is_null($incident->assigned_to_user_id))
                         <!-- Acción Rápida: Tomar Incidencia (Auto-asignación) -->
                         <form method="POST" action="{{ route('incidents.assign', $incident) }}" class="inline">
                             @csrf
@@ -88,7 +88,9 @@
                             </button>
                         </form>
                     @endif
+                @endcan
 
+                @can('assign', $incident)
                     <!-- Botón para Abrir Modal de Asignación / Reasignación -->
                     <button
                         type="button"
@@ -100,8 +102,8 @@
                     </button>
                 @endcan
 
-                <!-- Botón: Iniciar Atención Técnica (Paso 22) -->
                 @can('startAttention', $incident)
+                    <!-- Botón: Iniciar Atención Técnica (Paso 22) -->
                     <form method="POST" action="{{ route('incidents.start-attention', $incident) }}" class="inline">
                         @csrf
                         <button
@@ -114,8 +116,8 @@
                     </form>
                 @endcan
 
-                <!-- Botón: Marcar como Resuelta (Paso 23) -->
                 @can('resolve', $incident)
+                    <!-- Botón: Marcar como Resuelta (Paso 23) -->
                     <button
                         type="button"
                         @click="showResolveModal = true"
@@ -126,8 +128,8 @@
                     </button>
                 @endcan
 
-                <!-- Botón: Rechazar Solución (Paso 24 - APOC) -->
                 @can('rejectResolution', $incident)
+                    <!-- Botón: Rechazar Solución (Paso 24 - APOC) -->
                     <button
                         type="button"
                         @click="showRejectModal = true"
@@ -138,8 +140,8 @@
                     </button>
                 @endcan
 
-                <!-- Botón: Dar Visto Bueno y Cerrar (Paso 25 - APOC) -->
                 @can('close', $incident)
+                    <!-- Botón: Dar Visto Bueno y Cerrar (Paso 25 - APOC) -->
                     <button
                         type="button"
                         @click="showCloseModal = true"
@@ -569,7 +571,41 @@
                         Responsable Técnico
                     </h2>
 
-                    @if($incident->isAssignedToTics())
+                    {{-- Áreas Asignadas --}}
+                    @if($incident->assignedAreas->isNotEmpty())
+                        <div class="flex flex-col gap-1.5 pb-2 border-b border-border-subtle/60">
+                            <span class="text-[10px] uppercase font-bold text-outline tracking-wider">Área(s) Responsable(s)</span>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                @foreach($incident->assignedAreas as $area)
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-medium border
+                                        @if($area->area_code === 'tics') bg-blue-500/10 text-blue-400 border-blue-500/20
+                                        @elseif($area->role) {{ $area->role->badge_bg ?? 'bg-surface-container-high' }} {{ $area->role->badge_text ?? 'text-primary' }} {{ $area->role->badge_border ?? 'border-border-subtle' }}
+                                        @else bg-surface-container-high text-on-surface border-border-subtle @endif">
+                                        <span class="material-symbols-outlined text-[13px]">domain</span>
+                                        <span>{{ $area->area_code === 'tics' ? 'TICS' : ($area->role?->name ?? strtoupper($area->area_code)) }}</span>
+                                    </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    {{-- Especialista Individual o Estado de Asignación --}}
+                    @if($incident->assignedTo)
+                        <div class="flex items-center gap-3 bg-surface-container-low p-3.5 rounded-xl border border-border-subtle">
+                            <div class="w-10 h-10 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center font-mono font-bold text-primary text-sm">
+                                {{ substr($incident->assignedTo->name, 0, 2) }}
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <span class="font-semibold text-xs text-on-surface truncate">{{ $incident->assignedTo->name }}</span>
+                                <span class="text-[11px] text-outline font-mono">{{ $incident->assignedTo->email }}</span>
+                                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                                    <span class="text-[10px] text-outline font-mono">
+                                        {{ $incident->assignedTo->role?->name ?? 'GTS' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    @elseif($incident->isAssignedToTics())
                         <div class="flex items-center gap-3 bg-surface-container-low p-3.5 rounded-xl border border-border-subtle">
                             <div class="w-10 h-10 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center font-mono font-bold text-primary text-sm">
                                 TI
@@ -584,19 +620,15 @@
                                 </div>
                             </div>
                         </div>
-                    @elseif($incident->assignedTo)
+                    @elseif($incident->assignedAreas->isNotEmpty())
                         <div class="flex items-center gap-3 bg-surface-container-low p-3.5 rounded-xl border border-border-subtle">
-                            <div class="w-10 h-10 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center font-mono font-bold text-primary text-sm">
-                                {{ substr($incident->assignedTo->name, 0, 2) }}
+                            <div class="w-10 h-10 rounded-full bg-surface-container-high border border-border-subtle flex items-center justify-center font-mono font-bold text-outline text-sm">
+                                <span class="material-symbols-outlined text-[20px]">groups</span>
                             </div>
                             <div class="flex flex-col min-w-0">
-                                <span class="font-semibold text-xs text-on-surface truncate">{{ $incident->assignedTo->name }}</span>
-                                <span class="text-[11px] text-outline font-mono">{{ $incident->assignedTo->email }}</span>
-                                <div class="flex items-center gap-2 mt-1 flex-wrap">
-                                    <span class="text-[10px] text-outline font-mono">
-                                        {{ $incident->assignedTo->role?->name ?? 'GTS' }}
-                                    </span>
-                                </div>
+                                <span class="font-semibold text-xs text-on-surface">Asignación a Nivel de Área</span>
+                                <span class="text-[11px] text-outline">Sin especialista individual asignado</span>
+                                <span class="text-[10px] text-primary mt-0.5">Atención abierta para personal autorizado</span>
                             </div>
                         </div>
                     @else
@@ -684,29 +716,102 @@
 
         </div>
 
-        <!-- 4. Modal de Asignación / Reasignación de Especialista -->
+        <!-- 4. Modal de Asignación / Reasignación de Especialista y Áreas Responsables -->
+        @can('assign', $incident)
         @php
-            $initialSelectedId = $incident->isAssignedToTics() ? 'tics' : ($incident->assigned_to_user_id ? (string)$incident->assigned_to_user_id : '');
+            $initialAreas = $incident->assignedAreaCodes();
+            if (empty($initialAreas)) {
+                if ($incident->isAssignedToTics()) {
+                    $initialAreas = ['tics'];
+                } elseif ($incident->assignedTo && $incident->assignedTo->role) {
+                    $initialAreas = [$incident->assignedTo->role->slug];
+                }
+            }
+            $initialUserId = $incident->assigned_to_user_id ? (string) $incident->assigned_to_user_id : '';
+            $availableAreasList = ($availableAreas ?? collect())->values()->all();
+            $availableTechniciansList = ($availableTechnicians ?? collect())->map(function($tech) {
+                return [
+                    'id' => (string) $tech->id,
+                    'name' => $tech->name,
+                    'badge' => $tech->badge_number ?? $tech->getRoleTag(),
+                    'role_slug' => strtolower($tech->role?->slug ?? ''),
+                    'role_name' => $tech->role?->name ?? 'GTS',
+                ];
+            })->values()->all();
         @endphp
         <div
             x-show="showAssignModal"
             x-cloak
             x-data="{
-                selectedTechId: '{{ $initialSelectedId }}'
+                allAreas: {{ Js::from($availableAreasList) }},
+                allTechnicians: {{ Js::from($availableTechniciansList) }},
+                selectedAreas: {{ Js::from($initialAreas) }},
+                selectedUserId: '{{ $initialUserId }}',
+                areaToAdd: '',
+                isSubmitting: false,
+
+                get filteredTechnicians() {
+                    if (this.selectedAreas.length === 0) return [];
+                    const selectedSlugs = this.selectedAreas.map(a => a.toLowerCase());
+                    return this.allTechnicians.filter(t => selectedSlugs.includes(t.role_slug));
+                },
+
+                get unselectedAreas() {
+                    const selectedSlugs = this.selectedAreas.map(a => a.toLowerCase());
+                    return this.allAreas.filter(a => !selectedSlugs.includes(a.code.toLowerCase()));
+                },
+
+                addArea(code) {
+                    if (!code) return;
+                    const cleanCode = code.toLowerCase();
+                    if (!this.selectedAreas.map(a => a.toLowerCase()).includes(cleanCode)) {
+                        this.selectedAreas.push(cleanCode);
+                    }
+                    this.areaToAdd = '';
+                },
+
+                removeArea(code) {
+                    const cleanCode = code.toLowerCase();
+                    this.selectedAreas = this.selectedAreas.filter(a => a.toLowerCase() !== cleanCode);
+                    this.validateSelectedUser();
+                },
+
+                validateSelectedUser() {
+                    if (this.selectedUserId) {
+                        const isValid = this.filteredTechnicians.some(t => String(t.id) === String(this.selectedUserId));
+                        if (!isValid) {
+                            this.selectedUserId = '';
+                        }
+                    }
+                },
+
+                getAreaMeta(code) {
+                    const clean = code.toLowerCase();
+                    return this.allAreas.find(a => a.code.toLowerCase() === clean) || {
+                        code: code,
+                        name: code.toUpperCase(),
+                        badge_bg: 'bg-surface-container-high',
+                        badge_text: 'text-on-surface',
+                        badge_border: 'border-border-subtle'
+                    };
+                }
             }"
             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-base/80 backdrop-blur-sm"
             @keydown.escape.window="showAssignModal = false"
         >
             <div
-                class="bg-surface-subtle border border-border-subtle w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
+                class="bg-surface-subtle border border-border-subtle w-full max-w-xl rounded-2xl shadow-2xl p-6 flex flex-col gap-5"
                 @click.outside="showAssignModal = false"
             >
-                <div class="flex items-center justify-between pb-2 border-b border-border-subtle">
-                    <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-primary text-[22px]">sync_alt</span>
-                        <h3 class="text-base font-bold text-on-surface">
-                            {{ ($incident->assignedTo || $incident->isAssignedToTics()) ? 'Reasignar Especialista' : 'Asignar Especialista' }}
-                        </h3>
+                <div class="flex items-center justify-between pb-3 border-b border-border-subtle">
+                    <div class="flex items-center gap-2.5">
+                        <span class="material-symbols-outlined text-primary text-[24px]">device_hub</span>
+                        <div>
+                            <h3 class="text-base font-bold text-on-surface">
+                                {{ ($incident->assignedTo || $incident->isAssignedToTics() || $incident->assignedAreas->isNotEmpty()) ? 'Reasignar Especialista y Áreas' : 'Asignar Especialista y Áreas' }}
+                            </h3>
+                            <p class="text-[11px] text-outline">Gestione las áreas responsables y asigne opcionalmente un especialista técnico.</p>
+                        </div>
                     </div>
                     <button
                         type="button"
@@ -717,41 +822,126 @@
                     </button>
                 </div>
 
-                <form method="POST" action="{{ route('incidents.assign', $incident) }}" class="flex flex-col gap-4">
+                <form method="POST" action="{{ route('incidents.assign', $incident) }}" class="flex flex-col gap-4" @submit="isSubmitting = true">
                     @csrf
 
-                    <!-- Selector de Especialista / Área -->
-                    <div class="flex flex-col gap-1.5">
-                        <label for="modal_assigned_to_user_id" class="text-xs font-semibold text-on-surface flex items-center justify-between">
-                            <span>Seleccionar Especialista de Atención <span class="text-status-critical">*</span></span>
+                    <!-- Inputs Ocultos de Áreas Seleccionadas -->
+                    <template x-for="code in selectedAreas" :key="code">
+                        <input type="hidden" name="areas[]" :value="code">
+                    </template>
+
+                    <!-- SELECTOR 1: Área Responsable (Selección Múltiple) -->
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-semibold text-on-surface flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px] text-primary">domain</span>
+                                <span>1. Área Responsable <span class="text-status-critical">*</span></span>
+                            </span>
                             <span class="text-[11px] text-outline font-normal">
-                                Especialistas disponibles: <strong class="text-primary">{{ $gtsUsers->count() + 1 }}</strong>
+                                Seleccionadas: <strong class="text-primary font-mono" x-text="selectedAreas.length"></strong>
                             </span>
                         </label>
+
+                        <!-- Contenedor de Chips / Badges de Áreas Seleccionadas -->
+                        <div class="min-h-[46px] p-2.5 bg-surface-container-low border border-border-subtle rounded-xl flex flex-wrap items-center gap-2">
+                            <template x-for="code in selectedAreas" :key="code">
+                                <span
+                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all"
+                                    :class="getAreaMeta(code).badge_bg + ' ' + getAreaMeta(code).badge_text + ' ' + getAreaMeta(code).badge_border"
+                                >
+                                    <span class="font-mono text-[11px]" x-text="getAreaMeta(code).name"></span>
+                                    <button
+                                        type="button"
+                                        @click="removeArea(code)"
+                                        title="Retirar área"
+                                        class="hover:opacity-75 transition-opacity ml-0.5 text-current"
+                                    >
+                                        <span class="material-symbols-outlined text-[14px] leading-none">close</span>
+                                    </button>
+                                </span>
+                            </template>
+
+                            <template x-if="selectedAreas.length === 0">
+                                <span class="text-outline text-xs italic flex items-center gap-1.5 px-1">
+                                    <span class="material-symbols-outlined text-[16px]">info</span>
+                                    Ninguna área seleccionada. Elija al menos un área responsable.
+                                </span>
+                            </template>
+                        </div>
+
+                        <!-- Selector para agregar nuevas áreas autorizadas -->
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <div class="relative flex-1">
+                                <select
+                                    x-model="areaToAdd"
+                                    @change="addArea(areaToAdd)"
+                                    class="w-full appearance-none px-3 py-2 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-8 cursor-pointer shadow-inner"
+                                    :disabled="unselectedAreas.length === 0"
+                                >
+                                    <option value="" x-text="unselectedAreas.length === 0 ? 'Todas las áreas autorizadas ya han sido agregadas' : '+ Agregar otra área autorizada...'"></option>
+                                    <template x-for="area in unselectedAreas" :key="area.code">
+                                        <option :value="area.code" x-text="area.name"></option>
+                                    </template>
+                                </select>
+                                <span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
+                                    add_circle
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Estado vacío si el usuario no tiene áreas permitidas -->
+                        <template x-if="allAreas.length === 0">
+                            <p class="text-[11px] text-status-critical flex items-center gap-1 mt-1">
+                                <span class="material-symbols-outlined text-[14px]">warning</span>
+                                No tiene destinos de asignación autorizados según su rol y alcances operativos.
+                            </p>
+                        </template>
+                    </div>
+
+                    <!-- SELECTOR 2: Usuario Responsable (Opcional) -->
+                    <div class="flex flex-col gap-1.5 pt-1">
+                        <label for="modal_assigned_to_user_id" class="text-xs font-semibold text-on-surface flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px] text-primary">person</span>
+                                <span>2. Usuario Responsable <span class="text-outline font-normal">(Opcional)</span></span>
+                            </span>
+                            <span class="text-[11px] text-outline font-normal">
+                                Compatibles: <strong class="text-primary font-mono" x-text="filteredTechnicians.length"></strong>
+                            </span>
+                        </label>
+
                         <div class="relative">
                             <select
                                 id="modal_assigned_to_user_id"
                                 name="assigned_to_user_id"
-                                x-model="selectedTechId"
-                                required
-                                class="w-full appearance-none px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-9 cursor-pointer shadow-inner"
+                                x-model="selectedUserId"
+                                :disabled="filteredTechnicians.length === 0 || selectedAreas.length === 0"
+                                class="w-full appearance-none px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-9 cursor-pointer shadow-inner disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                                <option value="" disabled :selected="!selectedTechId">
-                                    -- Seleccionar especialista o área responsable --
-                                </option>
-                                <option value="tics">
-                                    TICS — Área de Tecnologías de Información y Comunicaciones
-                                </option>
-                                @foreach($gtsUsers as $tech)
-                                    <option value="{{ $tech->id }}">
-                                        {{ $tech->name }} ({{ $tech->badge_number ?? 'GTS' }}) — {{ $tech->role?->name ?? 'GTS' }}
-                                    </option>
-                                @endforeach
+                                <template x-if="selectedAreas.length === 0">
+                                    <option value="">-- Primero seleccione al menos un área responsable --</option>
+                                </template>
+
+                                <template x-if="selectedAreas.length > 0 && filteredTechnicians.length === 0">
+                                    <option value="">-- Las áreas seleccionadas no cuentan con especialistas individuales --</option>
+                                </template>
+
+                                <template x-if="selectedAreas.length > 0 && filteredTechnicians.length > 0">
+                                    <option value="">-- Sin usuario asignado (asignar solo a nivel de área) --</option>
+                                </template>
+
+                                <template x-for="tech in filteredTechnicians" :key="tech.id">
+                                    <option :value="tech.id" x-text="'[' + tech.role_name + '] ' + tech.name + ' (' + tech.badge + ')'"></option>
+                                </template>
                             </select>
                             <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
                                 expand_more
                             </span>
                         </div>
+
+                        <p class="text-[11px] text-outline" x-show="selectedAreas.length > 0 && filteredTechnicians.length === 0">
+                            * El destino seleccionado (ej. TICS o área externa) operará sin asignación individual de técnico.
+                        </p>
                     </div>
 
                     <!-- Comentario u Observación -->
@@ -762,34 +952,45 @@
                         <textarea
                             id="modal_comment"
                             name="comment"
-                            rows="3"
-                            placeholder="Motivo de la asignación, instrucciones de despacho a pista o consola..."
+                            rows="2"
+                            placeholder="Motivo de la asignación, instrucciones operativas a pista o consola..."
                             class="w-full px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface placeholder:text-outline focus:outline-none focus:border-border-focus transition-colors shadow-inner resize-none"
                         ></textarea>
                     </div>
 
                     <!-- Botones de Acción Modal -->
-                    <div class="flex items-center justify-end gap-3 pt-2">
-                        <button
-                            type="button"
-                            @click="showAssignModal = false"
-                            class="px-4 py-2 bg-surface-container-high hover:bg-surface-container text-on-surface font-semibold text-xs rounded-xl border border-border-subtle transition-colors"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5"
-                        >
-                            <span class="material-symbols-outlined text-[16px]">how_to_reg</span>
-                            <span>Confirmar Asignación</span>
-                        </button>
+                    <div class="flex items-center justify-between pt-2 border-t border-border-subtle">
+                        <div class="text-[11px] text-outline">
+                            <span x-show="selectedAreas.length === 0" class="text-status-critical flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[14px]">error</span>
+                                Seleccione al menos un área.
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <button
+                                type="button"
+                                @click="showAssignModal = false"
+                                class="px-4 py-2 bg-surface-container-high hover:bg-surface-container text-on-surface font-semibold text-xs rounded-xl border border-border-subtle transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="selectedAreas.length === 0 || isSubmitting"
+                                class="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <span class="material-symbols-outlined text-[16px]">how_to_reg</span>
+                                <span x-text="isSubmitting ? 'Asignando...' : 'Confirmar Asignación'"></span>
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
         </div>
+        @endcan
 
         <!-- 5. Modal de Resolución Técnica de Incidencia (Paso 23) -->
+        @can('resolve', $incident)
         <div
             x-show="showResolveModal"
             x-cloak
@@ -864,8 +1065,10 @@
                 </form>
             </div>
         </div>
+        @endcan
 
         <!-- 6. Modal de Rechazo de Solución por APOC (Paso 24) -->
+        @can('rejectResolution', $incident)
         <div
             x-show="showRejectModal"
             x-cloak
@@ -940,8 +1143,10 @@
                 </form>
             </div>
         </div>
+        @endcan
 
         <!-- 7. Modal de Visto Bueno y Cierre Definitivo (Paso 25) -->
+        @can('close', $incident)
         <div
             x-show="showCloseModal"
             x-cloak
@@ -1028,8 +1233,10 @@
                 </form>
             </div>
         </div>
+        @endcan
 
         <!-- Modal: Adjuntar Nuevas Evidencias (Paso 27) -->
+        @can('uploadAttachment', $incident)
         <div
             x-show="showUploadModal"
             x-cloak
@@ -1104,6 +1311,7 @@
                 </form>
             </div>
         </div>
+        @endcan
 
     </div>
 </x-app-layout>

@@ -1,7 +1,7 @@
 <x-app-layout>
     <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col gap-6">
         
-        @if(auth()->user()->isAdmin())
+        @if(auth()->user()->isAdmin() || auth()->user()->hasAnyPermission(['users.view', 'roles.view']))
             <!-- Pestañas de Navegación de Configuración -->
             <div class="flex items-center gap-2 border-b border-[#263241] pb-1">
                 <a 
@@ -13,15 +13,28 @@
                         <span>Mi Cuenta</span>
                     </span>
                 </a>
-                <a 
-                    href="{{ route('users.index') }}" 
-                    class="px-4 py-2 text-xs font-semibold rounded-t-xl transition-colors text-[#8D98A8] hover:text-[#F2F5F8] hover:bg-[#101923]"
-                >
-                    <span class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[16px]">group</span>
-                        <span>Gestión de Usuarios y Cuadrillas</span>
-                    </span>
-                </a>
+                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('users.view'))
+                    <a 
+                        href="{{ route('users.index') }}" 
+                        class="px-4 py-2 text-xs font-semibold rounded-t-xl transition-colors text-[#8D98A8] hover:text-[#F2F5F8] hover:bg-[#101923]"
+                    >
+                        <span class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">group</span>
+                            <span>Gestión de Usuarios y Cuadrillas</span>
+                        </span>
+                    </a>
+                @endif
+                @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('roles.view'))
+                    <a 
+                        href="{{ route('roles.index') }}" 
+                        class="px-4 py-2 text-xs font-semibold rounded-t-xl transition-colors text-[#8D98A8] hover:text-[#F2F5F8] hover:bg-[#101923]"
+                    >
+                        <span class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+                            <span>Gestión de Roles y Permisos</span>
+                        </span>
+                    </a>
+                @endif
             </div>
         @endif
 

@@ -8,17 +8,23 @@ use App\Models\User;
 class IncidentPolicy
 {
     /**
-     * Determina si el usuario puede listar incidencias.
+     * Determina si el usuario puede listar incidencias en el sistema.
      */
     public function viewAny(User $user): bool
     {
-        return $user->is_active;
+        if (! $user->is_active) {
+            return false;
+        }
+
+        return $user->isAdmin()
+            || $user->hasAnyPermission(['incidents.view_all', 'incidents.view_department', 'incidents.view_assigned'])
+            || (! \App\Models\Permission::exists() && ($user->isGts() || $user->isApoc()));
     }
 
     /**
      * Determina si el usuario puede consultar el expediente de una incidencia.
-     * APOC-CCO y APOC-CSA pueden consultar incidencias pertenecientes a su mismo rol/ámbito operativo.
-     * GTS y Administrador tienen visibilidad global.
+     * Considera asignación directa, permiso global y alcances operativos inter-rol.
+     * La autoría no concede acceso si el usuario carece de permisos de visualización aplicables.
      */
     public function view(User $user, Incident $incident): bool
     {
@@ -26,38 +32,95 @@ class IncidentPolicy
             return false;
         }
 
-        if ($user->isAdmin() || $user->isGts()) {
+        // 1. Administrador posee bypass completo
+        if ($user->isAdmin()) {
             return true;
         }
 
-        if ($user->isApocCco()) {
-            return $incident->isFromCco();
+        // 2. Comprobar primero si el usuario cuenta con algún permiso de visualización aplicable.
+        // Sin permiso de consulta válido, el usuario NO puede ver ninguna incidencia.
+        $hasAnyViewPermission = $user->hasAnyPermission(['incidents.view_all', 'incidents.view_department', 'incidents.view_assigned'])
+            || (! \App\Models\Permission::exists() && ($user->isGts() || $user->isApoc()));
+
+        if (! $hasAnyViewPermission) {
+            return false;
         }
 
-        if ($user->isApocCsa()) {
-            return $incident->isFromCsa();
+        // 3. Si tiene permiso global para ver todas las incidencias
+        if ($user->hasPermission('incidents.view_all')) {
+            return true;
         }
 
-        if ($user->isApoc()) {
-            return (int) $incident->reported_by_user_id === (int) $user->id;
+        // 4. Si es el autor que reportó la incidencia (con permiso de consulta activo comprobado en paso 2)
+        if ((int) $incident->reported_by_user_id === (int) $user->id) {
+            return true;
+        }
+
+        // 5. Si tiene permiso de incidencias asignadas: sólo puede ver aquellas asignadas a él o a su área responsable
+        if ($user->hasPermission('incidents.view_assigned')) {
+            if ((int) $incident->assigned_to_user_id === (int) $user->id) {
+                return true;
+            }
+            if ($user->role_id && $incident->assignedAreas()->where('role_id', $user->role_id)->exists()) {
+                return true;
+            }
+        }
+
+        // 6. Si tiene permiso de incidencias de área/departamento
+        if ($user->hasPermission('incidents.view_department')) {
+            if ($user->role_id && $incident->assignedAreas()->where('role_id', $user->role_id)->exists()) {
+                return true;
+            }
+
+            // Matriz de alcance operativo inter-rol (canViewRole)
+            if ($incident->reportedBy && $incident->reportedBy->role_id) {
+                if ($user->canViewRole($incident->reportedBy->role_id)) {
+                    return true;
+                }
+            }
+
+            // Compatibilidad departamental CCO / CSA
+            if ($user->isApocCco() && $incident->isFromCco()) {
+                return true;
+            }
+
+            if ($user->isApocCsa() && $incident->isFromCsa()) {
+                return true;
+            }
+        }
+
+        // 6. Fallback para entornos de pruebas sin seeding de permisos
+        if (! \App\Models\Permission::exists()) {
+            if ($user->isGts()) {
+                return true;
+            }
+            if ($user->isApoc()) {
+                return (int) $incident->reported_by_user_id === (int) $user->id
+                    || (int) $incident->assigned_to_user_id === (int) $user->id
+                    || ($user->isApocCco() && $incident->isFromCco())
+                    || ($user->isApocCsa() && $incident->isFromCsa());
+            }
         }
 
         return false;
     }
 
     /**
-     * Determina si el usuario puede crear/despachar una nueva incidencia.
-     * APOC, GTS y Administrador tienen la facultad de abrir tickets.
+     * Determina si el usuario puede registrar y despachar una nueva incidencia.
      */
     public function create(User $user): bool
     {
-        return $user->is_active && ($user->isApoc() || $user->isGts() || $user->isAdmin());
+        if (! $user->is_active) {
+            return false;
+        }
+
+        return $user->isAdmin()
+            || $user->hasPermission('incidents.create')
+            || (! \App\Models\Permission::exists() && ($user->isApoc() || $user->isGts()));
     }
 
     /**
      * Determina si el usuario puede asignar o reasignar un técnico a la incidencia.
-     * Solo GTS y Administrador pueden gestionar asignaciones técnicas.
-     * La incidencia no debe estar cerrada.
      */
     public function assign(User $user, Incident $incident): bool
     {
@@ -65,15 +128,48 @@ class IncidentPolicy
             return false;
         }
 
-        $isAuthorizedRole = $user->isGts() || $user->isAdmin();
+        $isAuthorized = $user->isAdmin() 
+            || $user->hasPermission('incidents.assign')
+            || (! \App\Models\Permission::exists() && $user->isGts());
         $isAssignableStatus = in_array($incident->status->code, ['NUEVA', 'ASIGNADA', 'EN_ATENCION'], true);
 
-        return $isAuthorizedRole && $isAssignableStatus;
+        return $isAuthorized && $isAssignableStatus;
+    }
+
+    /**
+     * Determina si el usuario puede autoasignarse una incidencia abierta.
+     */
+    public function take(User $user, Incident $incident): bool
+    {
+        if (! $user->is_active) {
+            return false;
+        }
+
+        $hasPermission = $user->isAdmin() 
+            || $user->hasPermission('incidents.take')
+            || (! \App\Models\Permission::exists() && $user->isGts());
+        $isAvailableStatus = in_array($incident->status->code, ['NUEVA', 'ASIGNADA'], true);
+
+        return $hasPermission && $isAvailableStatus;
+    }
+
+    /**
+     * Determina si el usuario puede liberar la asignación técnica de una incidencia.
+     */
+    public function release(User $user, Incident $incident): bool
+    {
+        if (! $user->is_active) {
+            return false;
+        }
+
+        $hasPermission = $user->isAdmin() || $user->hasPermission('incidents.release');
+        $isAssignedToUser = (int) $incident->assigned_to_user_id === (int) $user->id || $user->isAdmin();
+
+        return $hasPermission && $isAssignedToUser;
     }
 
     /**
      * Determina si el usuario puede iniciar la atención en campo o consola (EN ATENCIÓN).
-     * Requiere rol GTS o Admin y que esté previamente ASIGNADA (o autoasignación desde NUEVA).
      */
     public function startAttention(User $user, Incident $incident): bool
     {
@@ -81,15 +177,28 @@ class IncidentPolicy
             return false;
         }
 
-        $isAuthorizedRole = $user->isGts() || $user->isAdmin();
         $isEligibleStatus = in_array($incident->status->code, ['NUEVA', 'ASIGNADA'], true);
+        if (! $isEligibleStatus) {
+            return false;
+        }
 
-        return $isAuthorizedRole && $isEligibleStatus;
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        $hasPermission = $user->hasPermission('incidents.attend');
+
+        // Validar alcance de atención técnica sobre el creador de la incidencia
+        $canAttendScope = true;
+        if ($incident->reportedBy && $incident->reportedBy->role_id) {
+            $canAttendScope = $user->canAttendRole($incident->reportedBy->role_id);
+        }
+
+        return $hasPermission && $canAttendScope;
     }
 
     /**
      * Determina si el usuario puede agregar notas técnicas de campo.
-     * Solo personal GTS o Admin cuando la incidencia está activamente EN ATENCIÓN.
      */
     public function addNote(User $user, Incident $incident): bool
     {
@@ -97,13 +206,13 @@ class IncidentPolicy
             return false;
         }
 
-        return ($user->isGts() || $user->isAdmin()) && $incident->status->code === 'EN_ATENCION';
+        $hasPermission = $user->isAdmin() || $user->hasPermission('incidents.attend');
+
+        return $hasPermission && $incident->status->code === 'EN_ATENCION';
     }
 
     /**
      * Determina si el usuario puede marcar la incidencia como RESUELTA.
-     * Segregación de funciones: Solo personal técnico GTS o Admin.
-     * Requiere que la incidencia esté en estado EN ATENCIÓN.
      */
     public function resolve(User $user, Incident $incident): bool
     {
@@ -111,12 +220,15 @@ class IncidentPolicy
             return false;
         }
 
-        return ($user->isGts() || $user->isAdmin()) && $incident->status->code === 'EN_ATENCION';
+        $hasPermission = $user->isAdmin() 
+            || $user->hasPermission('incidents.resolve')
+            || (! \App\Models\Permission::exists() && $user->isGts());
+
+        return $hasPermission && $incident->status->code === 'EN_ATENCION';
     }
 
     /**
      * Determina si el usuario puede rechazar la solución y devolver a atención técnica.
-     * Solo personal APOC o Admin cuando la incidencia está en estado RESUELTA y tienen acceso al ticket.
      */
     public function rejectResolution(User $user, Incident $incident): bool
     {
@@ -128,13 +240,15 @@ class IncidentPolicy
             return false;
         }
 
-        return ($user->isApoc() || $user->isAdmin()) && $incident->status->code === 'RESUELTA';
+        $hasPermission = $user->isAdmin() 
+            || $user->hasPermission('incidents.reopen')
+            || (! \App\Models\Permission::exists() && $user->isApoc());
+
+        return $hasPermission && $incident->status->code === 'RESUELTA';
     }
 
     /**
      * Determina si el usuario puede dar el visto bueno y CERRAR la incidencia.
-     * Permitido a personal APOC (respetando confidencialidad CCO/CSA), GTS y Administrador
-     * cuando la incidencia está previamente en estado RESUELTA.
      */
     public function close(User $user, Incident $incident): bool
     {
@@ -146,7 +260,11 @@ class IncidentPolicy
             return false;
         }
 
-        return ($user->isApoc() || $user->isGts() || $user->isAdmin()) && $incident->status->code === 'RESUELTA';
+        $hasPermission = $user->isAdmin() 
+            || $user->hasPermission('incidents.vobo_close')
+            || (! \App\Models\Permission::exists() && ($user->isApoc() || $user->isGts()));
+
+        return $hasPermission && $incident->status->code === 'RESUELTA';
     }
 
     /**
@@ -159,7 +277,6 @@ class IncidentPolicy
 
     /**
      * Determina si el usuario puede cargar nuevas evidencias a la incidencia.
-     * Permitido a usuarios activos cuando la incidencia no está cerrada e inmutable y tienen acceso al ticket.
      */
     public function uploadAttachment(User $user, Incident $incident): bool
     {
@@ -168,19 +285,17 @@ class IncidentPolicy
 
     /**
      * Determina si el usuario puede consultar la bitácora pericial de auditoría.
-     * Acceso reservado exclusivamente al Administrador del Sistema.
      */
     public function viewAudit(User $user): bool
     {
-        return $user->is_active && $user->isAdmin();
+        return $user->is_active && ($user->isAdmin() || $user->hasPermission('audit.view'));
     }
 
     /**
      * Determina si el usuario puede eliminar definitivamente una incidencia.
-     * Exclusivo para el Administrador del Sistema bajo confirmación y auditoría pericial (Fase 4).
      */
     public function delete(User $user, Incident $incident): bool
     {
-        return $user->is_active && $user->isAdmin();
+        return $user->is_active && ($user->isAdmin() || $user->hasPermission('incidents.delete'));
     }
 }

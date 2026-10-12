@@ -22,7 +22,7 @@ class UserController extends Controller
     public function index(Request $request): View
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
-        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: Exclusivo para el Administrador del Sistema.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('users.view'), 403, 'Acceso denegado: No posee permisos para consultar usuarios.');
 
         $query = User::with('role');
 
@@ -49,8 +49,9 @@ class UserController extends Controller
         }
 
         $users = $query->orderBy('name')->paginate(15)->withQueryString();
-        $roles = Role::whereIn('slug', ['apoc-cco', 'apoc-csa', 'gts', 'admin'])
+        $roles = Role::where('slug', '!=', 'apoc')
             ->orderByRaw("CASE slug WHEN 'apoc-cco' THEN 1 WHEN 'apoc-csa' THEN 2 WHEN 'gts' THEN 3 WHEN 'admin' THEN 4 ELSE 5 END")
+            ->orderBy('name')
             ->get();
 
         // Métricas de Usuarios
@@ -79,13 +80,13 @@ class UserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
-        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: Exclusivo para el Administrador del Sistema.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('users.create'), 403, 'Acceso denegado: No posee permisos para registrar usuarios.');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9._-]+$/', 'unique:users,username'],
             'password' => ['required', 'string', Password::defaults()],
-            'role_id' => ['required', Rule::exists('roles', 'id')->where(fn ($q) => $q->whereIn('slug', ['apoc-cco', 'apoc-csa', 'gts', 'admin']))],
+            'role_id' => ['required', Rule::exists('roles', 'id')->where(fn ($q) => $q->where('slug', '!=', 'apoc'))],
             'badge_number' => ['nullable', 'string', 'max:50'],
         ], [
             'username.regex' => 'El nombre de usuario sólo puede contener letras, números, puntos, guiones y guiones bajos.',
@@ -111,13 +112,13 @@ class UserController extends Controller
     public function update(Request $request, User $user): RedirectResponse
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
-        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: Exclusivo para el Administrador del Sistema.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('users.edit'), 403, 'Acceso denegado: No posee permisos para editar usuarios.');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:50', 'regex:/^[a-zA-Z0-9._-]+$/', Rule::unique('users')->ignore($user->id)],
             'email' => ['nullable', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            'role_id' => ['required', Rule::exists('roles', 'id')->where(fn ($q) => $q->whereIn('slug', ['apoc-cco', 'apoc-csa', 'gts', 'admin']))],
+            'role_id' => ['required', Rule::exists('roles', 'id')->where(fn ($q) => $q->where('slug', '!=', 'apoc'))],
             'badge_number' => ['nullable', 'string', 'max:50'],
             'password' => ['nullable', 'string', Password::defaults()],
         ], [
@@ -154,7 +155,7 @@ class UserController extends Controller
     public function toggleStatus(Request $request, User $user): RedirectResponse
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
-        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: Exclusivo para el Administrador del Sistema.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('users.edit'), 403, 'Acceso denegado: No posee permisos para modificar el estado de usuarios.');
 
         // 1. Prohibir auto-desactivación
         if ($user->id === $request->user()->id) {
@@ -189,7 +190,7 @@ class UserController extends Controller
     public function destroy(Request $request, User $user): RedirectResponse
     {
         abort_if(! $request->user()->is_active, 403, 'Usuario inactivo.');
-        abort_if(! $request->user()->isAdmin(), 403, 'Acceso denegado: Exclusivo para el Administrador del Sistema.');
+        abort_if(! $request->user()->isAdmin() && ! $request->user()->hasPermission('users.delete'), 403, 'Acceso denegado: No posee permisos para eliminar usuarios.');
 
         // 1. Prohibir auto-eliminación
         if ($user->id === $request->user()->id) {

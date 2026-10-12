@@ -61,7 +61,11 @@ class Paso6FinalRegressionMatrixTest extends TestCase
         // Menús permitidos para APOC
         $response->assertSee('Registrar incidencia');
         $response->assertSee('Mis incidencias');
-        $response->assertSee('Todas las incidencias');
+        if ($apocUser->hasPermission('incidents.view_all')) {
+            $response->assertSee('Todas las incidencias');
+        } else {
+            $response->assertDontSee('Todas las incidencias');
+        }
         $response->assertSee('Descargar reporte');
 
         // Restricciones: APOC no debe ver menús exclusivos de GTS o Admin

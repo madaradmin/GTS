@@ -206,18 +206,10 @@
                                         <span class="font-mono text-[#3D82C6] font-bold tracking-tight text-xs select-all">
                                             {{ $incident->folio }}
                                         </span>
-                                        @if(auth()->user()->isAdmin() || auth()->user()->isGts())
-                                            @if($incident->isFromCco())
-                                                <span class="inline-flex items-center gap-0.5 mt-0.5 w-fit px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20" title="Procedencia: APOC-CCO">
-                                                    CCO
-                                                </span>
-                                            @elseif($incident->isFromCsa())
-                                                <span class="inline-flex items-center gap-0.5 mt-0.5 w-fit px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider bg-orange-500/10 text-orange-400 border border-orange-500/20" title="Procedencia: APOC-CSA">
-                                                    CSA
-                                                </span>
-                                            @elseif($incident->origin_group)
-                                                <span class="inline-flex items-center gap-0.5 mt-0.5 w-fit px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider bg-slate-500/10 text-slate-400 border border-slate-500/20">
-                                                    {{ $incident->origin_group }}
+                                        @if(auth()->user()->isAdmin() || auth()->user()->isGts() || auth()->user()->hasPermission('incidents.view_all'))
+                                            @if($badge = $incident->origin_badge)
+                                                <span class="inline-flex items-center gap-0.5 mt-0.5 w-fit px-1.5 py-0.2 rounded text-[9px] font-bold font-mono tracking-wider {{ $badge['bg'] }} {{ $badge['text'] }} border {{ $badge['border'] }}" title="{{ $badge['title'] }}">
+                                                    {{ $badge['label'] }}
                                                 </span>
                                             @endif
                                         @endif
@@ -267,24 +259,35 @@
                                     </span>
                                 </td>
 
-                                <!-- Responsable GTS / Especialista -->
+                                <!-- Responsable Técnico / Especialista / Áreas -->
                                 <td class="py-2.5 px-2 whitespace-nowrap">
-                                    @if($incident->isAssignedToTics())
+                                    @if($incident->assignedTo)
+                                        <div class="flex items-center gap-1.5 truncate" title="{{ $incident->assignedTo->name }} ({{ $incident->assignedTo->role?->name ?? 'GTS' }})">
+                                            <span class="w-5 h-5 rounded-full bg-surface-container-high border border-border-subtle flex items-center justify-center font-mono text-[9px] text-primary font-bold shrink-0">
+                                                {{ substr($incident->assignedTo->name, 0, 2) }}
+                                            </span>
+                                            <span class="text-on-surface font-medium text-xs truncate">
+                                                {{ $incident->assignedTo->name }}
+                                            </span>
+                                        </div>
+                                    @elseif($incident->assignedAreas->isNotEmpty())
+                                        <div class="flex items-center gap-1 flex-wrap max-w-[170px]" title="{{ implode(', ', $incident->assignedAreaNames()) }}">
+                                            @foreach($incident->assignedAreas as $area)
+                                                <span class="px-1.5 py-0.5 rounded text-[9.5px] font-mono font-medium border
+                                                    @if($area->area_code === 'tics') bg-blue-500/10 text-blue-400 border-blue-500/20
+                                                    @elseif($area->role) {{ $area->role->badge_bg ?? 'bg-surface-container-high' }} {{ $area->role->badge_text ?? 'text-primary' }} {{ $area->role->badge_border ?? 'border-border-subtle' }}
+                                                    @else bg-surface-container-high text-on-surface border-border-subtle @endif">
+                                                    {{ $area->area_code === 'tics' ? 'TICS' : ($area->role?->name ?? strtoupper($area->area_code)) }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @elseif($incident->isAssignedToTics())
                                         <div class="flex items-center gap-1 truncate" title="Especialista TICS">
                                             <span class="w-5 h-5 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center font-mono text-[9px] text-primary font-bold shrink-0">
                                                 TI
                                             </span>
                                             <span class="text-on-surface font-medium text-xs truncate">
                                                 TICS
-                                            </span>
-                                        </div>
-                                    @elseif($incident->assignedTo)
-                                        <div class="flex items-center gap-1 truncate" title="{{ $incident->assignedTo->name }}">
-                                            <span class="w-5 h-5 rounded-full bg-surface-container-high border border-border-subtle flex items-center justify-center font-mono text-[9px] text-primary font-bold shrink-0">
-                                                {{ substr($incident->assignedTo->name, 0, 2) }}
-                                            </span>
-                                            <span class="text-on-surface font-medium text-xs truncate">
-                                                {{ $incident->assignedTo->name }}
                                             </span>
                                         </div>
                                     @else

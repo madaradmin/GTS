@@ -35,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 if (isset($args[0]) && $args[0] instanceof Incident) {
-                    return $user->isAdmin();
+                    return $user->isAdmin() || $user->hasPermission('incidents.delete');
                 }
 
                 return false;

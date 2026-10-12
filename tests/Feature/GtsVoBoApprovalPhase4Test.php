@@ -15,6 +15,14 @@ class GtsVoBoApprovalPhase4Test extends TestCase
     {
         parent::setUp();
         $this->seed();
+
+        $gtsUser = User::where('email', 'gts.morales@aifa.aero')->first();
+        if ($gtsUser) {
+            $voboPerm = \App\Models\Permission::where('slug', 'incidents.vobo_close')->first();
+            if ($voboPerm) {
+                $gtsUser->role->permissions()->syncWithoutDetaching([$voboPerm->id]);
+            }
+        }
     }
 
     /**

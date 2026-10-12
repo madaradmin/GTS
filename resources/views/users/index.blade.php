@@ -77,6 +77,17 @@
                     <span>Gestión de Usuarios y Cuadrillas</span>
                 </span>
             </a>
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('roles.view'))
+            <a 
+                href="{{ route('roles.index') }}" 
+                class="px-4 py-2 text-xs font-semibold rounded-t-xl transition-colors text-[#8D98A8] hover:text-[#F2F5F8] hover:bg-[#101923]"
+            >
+                <span class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+                    <span>Gestión de Roles y Permisos</span>
+                </span>
+            </a>
+            @endif
         </div>
 
         <!-- Encabezado y Acción de Alta -->
@@ -93,7 +104,7 @@
                     <h1 class="text-2xl sm:text-3xl font-bold text-[#F2F5F8] tracking-tight">Gestión de Usuarios y Cuadrillas</h1>
                     <span class="px-2.5 py-0.5 rounded bg-[#101923] text-[#3D82C6] font-mono text-xs font-semibold uppercase tracking-wider border border-[#263241] flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-[14px]">admin_panel_settings</span>
-                        <span>Exclusivo Administrador</span>
+                        <span>Control de Cuentas</span>
                     </span>
                 </div>
                 <p class="text-xs sm:text-sm text-[#8D98A8] mt-1">
@@ -101,6 +112,7 @@
                 </p>
             </div>
 
+            @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('users.create'))
             <div class="flex items-center gap-3 self-start md:self-auto">
                 <button 
                     type="button" 
@@ -111,6 +123,7 @@
                     <span>Registrar Usuario</span>
                 </button>
             </div>
+            @endif
         </div>
 
         <!-- Tarjetas de Resumen de Usuarios -->
@@ -277,10 +290,29 @@
                                             <span class="material-symbols-outlined text-[13px]">desktop_windows</span>
                                             <span>APOC-CSA</span>
                                         </span>
-                                    @else
+                                    @elseif($user->isApoc())
                                         <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                             <span class="material-symbols-outlined text-[13px]">desktop_windows</span>
-                                            <span>{{ $user->role ? $user->role->name : 'OPERADOR APOC' }}</span>
+                                            <span>OPERADOR APOC</span>
+                                        </span>
+                                    @else
+                                        @php
+                                            $badgeColor = $user->role?->badge_color ?? 'blue';
+                                            $colorMap = [
+                                                'blue' => 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                                                'purple' => 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                                                'emerald' => 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                                                'amber' => 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                                                'orange' => 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+                                                'cyan' => 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+                                                'rose' => 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                                                'indigo' => 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+                                            ];
+                                            $badgeCls = $colorMap[$badgeColor] ?? 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+                                        @endphp
+                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border {{ $badgeCls }}">
+                                            <span class="material-symbols-outlined text-[13px]">badge</span>
+                                            <span>{{ $user->role?->name ?? 'USUARIO' }}</span>
                                         </span>
                                     @endif
                                 </td>
@@ -302,17 +334,19 @@
                                 <td class="py-3.5 px-4 whitespace-nowrap text-center">
                                     <div class="flex items-center justify-center gap-1.5">
                                         <!-- Botón Editar -->
-                                        <button 
-                                            type="button" 
-                                            @click="openEdit({ id: {{ $user->id }}, name: '{{ addslashes($user->name) }}', username: '{{ addslashes($user->username) }}', email: '{{ addslashes($user->email ?? '') }}', role_id: '{{ $user->role_id }}', badge_number: '{{ addslashes($user->badge_number ?? '') }}' })"
-                                            class="p-1.5 text-[#8D98A8] hover:text-[#F2F5F8] hover:bg-[#1E293B] rounded-lg transition-colors"
-                                            title="Editar información"
-                                        >
-                                            <span class="material-symbols-outlined text-[16px]">edit</span>
-                                        </button>
+                                        @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('users.edit'))
+                                            <button 
+                                                type="button" 
+                                                @click="openEdit({ id: {{ $user->id }}, name: '{{ addslashes($user->name) }}', username: '{{ addslashes($user->username) }}', email: '{{ addslashes($user->email ?? '') }}', role_id: '{{ $user->role_id }}', badge_number: '{{ addslashes($user->badge_number ?? '') }}' })"
+                                                class="p-1.5 text-[#8D98A8] hover:text-[#F2F5F8] hover:bg-[#1E293B] rounded-lg transition-colors"
+                                                title="Editar información"
+                                            >
+                                                <span class="material-symbols-outlined text-[16px]">edit</span>
+                                            </button>
+                                        @endif
 
                                         <!-- Botón Activar / Desactivar -->
-                                        @if($user->id !== auth()->id())
+                                        @if($user->id !== auth()->id() && (auth()->user()->isAdmin() || auth()->user()->hasPermission('users.edit')))
                                             <form method="POST" action="{{ route('users.toggle-status', $user) }}" class="inline">
                                                 @csrf
                                                 <button 
@@ -328,7 +362,7 @@
                                         @endif
 
                                         <!-- Botón Eliminar permanentemente -->
-                                        @if($user->id !== auth()->id())
+                                        @if($user->id !== auth()->id() && (auth()->user()->isAdmin() || auth()->user()->hasPermission('users.delete')))
                                             <button 
                                                 type="button" 
                                                 @click="openDelete({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ route('users.destroy', $user) }}')"

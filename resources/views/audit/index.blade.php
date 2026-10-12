@@ -374,17 +374,21 @@
                                     {{ $incident->created_at->format('d/m/Y') }}
                                 </td>
 
-                                <!-- Acción de Eliminación (Exclusivo Administrador) -->
+                                <!-- Acción de Eliminación -->
                                 <td class="py-2.5 px-2 whitespace-nowrap text-center">
-                                    <button 
-                                        type="button"
-                                        @click="confirmDelete('{{ $incident->folio }}', '{{ route('audit.incidents.destroy', $incident->folio) }}')"
-                                        class="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-200 hover:bg-rose-500/10 border border-rose-500/20 hover:border-rose-500/40 transition-all shadow-sm cursor-pointer whitespace-nowrap"
-                                        title="Eliminar definitivamente expediente {{ $incident->folio }}"
-                                    >
-                                        <span class="material-symbols-outlined text-[15px] shrink-0">delete</span>
-                                        <span>Eliminar</span>
-                                    </button>
+                                    @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('incidents.delete'))
+                                        <button 
+                                            type="button"
+                                            @click="confirmDelete('{{ $incident->folio }}', '{{ route('audit.incidents.destroy', $incident->folio) }}')"
+                                            class="inline-flex items-center justify-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-400 hover:text-rose-200 hover:bg-rose-500/10 border border-rose-500/20 hover:border-rose-500/40 transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                                            title="Eliminar definitivamente expediente {{ $incident->folio }}"
+                                        >
+                                            <span class="material-symbols-outlined text-[15px] shrink-0">delete</span>
+                                            <span>Eliminar</span>
+                                        </button>
+                                    @else
+                                        <span class="text-outline text-[11px]">—</span>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -541,9 +545,9 @@
                                     </div>
                                 </td>
 
-                                <!-- Acción de Eliminación (Exclusivo Administrador) -->
+                                <!-- Acción de Eliminación -->
                                 <td class="py-2.5 px-2 whitespace-nowrap text-center">
-                                    @if ($history->incident)
+                                    @if ($history->incident && (auth()->user()->isAdmin() || auth()->user()->hasPermission('incidents.delete')))
                                         <button 
                                             type="button"
                                             @click="confirmDelete('{{ $history->incident->folio }}', '{{ route('audit.incidents.destroy', $history->incident->folio) }}')"

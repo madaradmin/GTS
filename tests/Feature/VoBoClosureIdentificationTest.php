@@ -58,6 +58,10 @@ class VoBoClosureIdentificationTest extends TestCase
     public function test_gts_closure_identifies_user_role_tag_and_displays_in_bitacora_and_view(): void
     {
         $gtsUser = User::where('email', 'gts.morales@aifa.aero')->firstOrFail();
+        $voboPerm = \App\Models\Permission::where('slug', 'incidents.vobo_close')->first();
+        if ($voboPerm) {
+            $gtsUser->role->permissions()->syncWithoutDetaching([$voboPerm->id]);
+        }
         $incident = Incident::factory()->resuelta()->create();
 
         $response = $this->actingAs($gtsUser)

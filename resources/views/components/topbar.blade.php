@@ -44,7 +44,7 @@
                         {{ auth()->user()->name }}
                     </span>
                     <span class="text-[10px] text-[#8D98A8] font-medium">
-                        {{ auth()->user()->isGts() ? 'GTS • Operaciones' : (auth()->user()->isApoc() ? 'APOC • Control' : 'ADMIN • Sistema') }}
+                        {{ auth()->user()->isGts() ? 'GTS • Operaciones' : (auth()->user()->isApoc() ? 'APOC • Control' : (auth()->user()->isAdmin() ? 'ADMIN • Sistema' : (auth()->user()->role?->name ?? 'Usuario') . ' • Sistema')) }}
                     </span>
                 </div>
 
@@ -78,7 +78,7 @@
                         <span class="material-symbols-outlined text-[16px]">person</span>
                         <span>Mi Perfil</span>
                     </a>
-                    @if(auth()->user()->isAdmin())
+                    @if(auth()->user()->isAdmin() || auth()->user()->hasPermission('audit.view'))
                         <a href="{{ route('audit.index') }}" class="flex items-center gap-2 px-3 py-1.5 text-xs text-[#9AA5B4] hover:text-[#F2F5F8] hover:bg-[#151B23] transition-colors">
                             <span class="material-symbols-outlined text-[16px]">history</span>
                             <span>Bitácora de Auditoría</span>

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PrioritySeeder::class,
             StatusSeeder::class,
             FolioSequenceSeeder::class,
+            PermissionSeeder::class,
         ]);
     }
 }
