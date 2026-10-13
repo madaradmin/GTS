@@ -48,11 +48,11 @@ class AssignIncidentRequest extends FormRequest
             }
         }
 
-        // 2. Normalizar array de áreas si fueron enviadas
+        // 2. Normalizar y deduplicar array de áreas si fueron enviadas
         if ($this->has('areas')) {
             $rawAreas = $this->input('areas');
             $areas = is_array($rawAreas)
-                ? array_values(array_filter(array_map('trim', $rawAreas)))
+                ? array_values(array_unique(array_filter(array_map('trim', $rawAreas))))
                 : array_filter([trim((string) $rawAreas)]);
             $this->merge(['areas' => $areas]);
         }
@@ -82,22 +82,54 @@ class AssignIncidentRequest extends FormRequest
                 'string',
                 function ($attribute, $value, $fail) {
                     $code = strtolower(trim((string) $value));
+
+                    // 1. TICS no es un rol funcional válido para reasignación
                     if ($code === 'tics') {
+                        $fail('El área TICS no es un destino válido para la asignación de incidencias.');
+
+                        return;
+                    }
+
+                    // 2. ADMINISTRADOR nunca debe ser un área de asignación
+                    if ($code === 'admin') {
+                        $fail('El rol Administrador no es un área válida para asignación de incidencias.');
+
+                        return;
+                    }
+
+                    // 3. Excluir el rol que originó la incidencia
+                    $incident = $this->route('incident');
+                    $creatorRoleId = $incident?->reportedBy?->role_id;
+                    $creatorRoleSlug = strtolower($incident?->reportedBy?->role?->slug ?? '');
+
+                    if ($creatorRoleSlug && $code === $creatorRoleSlug) {
+                        $fail("No se puede asignar la incidencia a su rol de procedencia ({$value}).");
+
                         return;
                     }
 
                     $user = $this->user();
                     if ($user && $user->isAdmin()) {
-                        $exists = Role::whereRaw('LOWER(slug) = ?', [$code])->exists();
-                        if (! $exists) {
-                            $fail("El área seleccionada ({$value}) no es válida.");
+                        $query = Role::whereRaw('LOWER(slug) = ?', [$code])
+                            ->where('slug', '!=', 'admin');
+                        if ($creatorRoleId) {
+                            $query->where('id', '!=', $creatorRoleId);
+                        }
+                        if (! $query->exists()) {
+                            $fail("El área seleccionada ({$value}) no es válida o no está autorizada.");
                         }
 
                         return;
                     }
 
                     $assignableRoleIds = $user?->assignableRoleIds() ?? [];
-                    $query = Role::whereRaw('LOWER(slug) = ?', [$code]);
+                    $query = Role::whereRaw('LOWER(slug) = ?', [$code])
+                        ->where('slug', '!=', 'admin');
+
+                    if ($creatorRoleId) {
+                        $query->where('id', '!=', $creatorRoleId);
+                    }
+
                     if (! empty($assignableRoleIds)) {
                         $query->whereIn('id', $assignableRoleIds);
                     } else {
@@ -127,12 +159,28 @@ class AssignIncidentRequest extends FormRequest
                     $technician = User::where('id', $value)->where('is_active', true)->with('role')->first();
 
                     if (! $technician) {
-                        $fail('El técnico seleccionado no existe, no pertenece a GTS o se encuentra inactivo.');
+                        $fail('El técnico seleccionado no existe, no pertenece a un área asignable o se encuentra inactivo.');
 
                         return;
                     }
 
-                    // A. Validar que el rol del técnico pertenezca a los roles que el usuario puede asignar
+                    // A. El rol Administrador no puede ser seleccionado como especialista
+                    if ($technician->isAdmin() || $technician->role?->slug === 'admin') {
+                        $fail('El rol Administrador no puede ser seleccionado como especialista técnico.');
+
+                        return;
+                    }
+
+                    // B. Excluir usuarios pertenecientes al rol creador de la incidencia
+                    $incident = $this->route('incident');
+                    $creatorRoleId = $incident?->reportedBy?->role_id;
+                    if ($creatorRoleId && $technician->role_id === $creatorRoleId) {
+                        $fail('No se puede asignar un técnico perteneciente al rol que originó la incidencia.');
+
+                        return;
+                    }
+
+                    // C. Validar que el rol del técnico pertenezca a los roles que el usuario puede asignar
                     if (! $user || ! $user->isAdmin()) {
                         $assignableRoleIds = $user?->assignableRoleIds() ?? [];
                         if (! empty($assignableRoleIds)) {
@@ -150,7 +198,7 @@ class AssignIncidentRequest extends FormRequest
                         }
                     }
 
-                    // B. Validar que el rol del técnico coincida con al menos una de las áreas seleccionadas en 'areas' si se enviaron áreas
+                    // D. Validar que el rol del técnico coincida con al menos una de las áreas seleccionadas en 'areas' si se enviaron áreas
                     $rawAreas = $this->input('areas', []);
                     $selectedAreas = array_map('strtolower', (array) $rawAreas);
                     $technicianRoleSlug = strtolower($technician->role?->slug ?? '');

@@ -81,21 +81,33 @@ class IncidentService
 
     /**
      * Retorna el catálogo de áreas responsables disponibles para asignación según los alcances operativos del usuario.
+     * Excluye estrictamente el rol Administrador, el área no funcional TICS y el rol de procedencia que originó la incidencia.
      *
      * @return SupportCollection<int, array<string, mixed>>
      */
-    public function getAssignableAreas(User $user): SupportCollection
+    public function getAssignableAreas(User $user, ?Incident $incident = null): SupportCollection
     {
         $areas = collect();
 
-        // 1. Áreas de roles del sistema según matriz de alcances operativos
+        // Determinar ID del rol creador de la incidencia para exclusión general
+        $creatorRoleId = $incident?->reportedBy?->role_id;
+
+        // 1. Áreas de roles del sistema según matriz de alcances operativos (excluyendo Administrador y rol creador)
+        $query = Role::where('slug', '!=', 'admin');
+
+        if ($creatorRoleId) {
+            $query->where('id', '!=', $creatorRoleId);
+        }
+
         if ($user->isAdmin()) {
-            $roles = Role::orderBy('name')->get();
+            $roles = $query->orderBy('name')->get();
         } else {
             $assignableRoleIds = $user->assignableRoleIds();
-            $roles = ! empty($assignableRoleIds)
-                ? Role::whereIn('id', $assignableRoleIds)->orderBy('name')->get()
-                : Role::where('slug', 'gts')->get();
+            if (! empty($assignableRoleIds)) {
+                $roles = $query->whereIn('id', $assignableRoleIds)->orderBy('name')->get();
+            } else {
+                $roles = $query->where('slug', 'gts')->get();
+            }
         }
 
         foreach ($roles as $role) {
@@ -106,19 +118,6 @@ class IncidentService
                 'badge_bg' => $role->badge_bg ?? 'bg-slate-50',
                 'badge_text' => $role->badge_text ?? 'text-slate-700',
                 'badge_border' => $role->badge_border ?? 'border-slate-200',
-            ]);
-        }
-
-        // 2. Destino técnico externo TICS
-        $canAssignTics = $user->isAdmin() || $user->isGts() || $user->hasPermission('incidents.assign');
-        if ($canAssignTics) {
-            $areas->push([
-                'code' => 'tics',
-                'name' => 'TICS — Área de Tecnologías de Información y Comunicaciones',
-                'role_id' => null,
-                'badge_bg' => 'bg-blue-50',
-                'badge_text' => 'text-blue-700',
-                'badge_border' => 'border-blue-200',
             ]);
         }
 
@@ -141,44 +140,51 @@ class IncidentService
      */
     public function assign(Incident $incident, User $assigner, array $areas, ?User $technician = null, ?string $comment = null): Incident
     {
-        // 1. Asegurar que si se provee un técnico, su área esté incluida en $areas
+        // 1. Asegurar deduplicación y normalización de áreas
+        $areas = array_values(array_unique(array_filter(array_map(fn ($a) => strtolower(trim((string) $a)), $areas))));
+
+        // Si se provee un técnico, asegurar que su área esté incluida
         if ($technician && $technician->role) {
             $techRoleSlug = strtolower($technician->role->slug);
-            if (! in_array($techRoleSlug, array_map('strtolower', $areas), true)) {
+            if (! in_array($techRoleSlug, $areas, true)) {
                 $areas[] = $techRoleSlug;
             }
         }
 
-        // 2. Resolver metadatos de las áreas asignadas
+        // 2. Resolver metadatos de las áreas asignadas excluyendo admin y rol creador
         $resolvedAreas = [];
+        $creatorRoleId = $incident->reportedBy?->role_id;
+
         foreach ($areas as $code) {
-            $code = strtolower(trim((string) $code));
-            if ($code === 'tics') {
-                $resolvedAreas[] = [
-                    'code' => 'tics',
-                    'name' => 'TICS',
-                    'role_id' => null,
+            if ($code === 'tics' || $code === 'admin') {
+                continue;
+            }
+
+            $role = Role::whereRaw('LOWER(slug) = ?', [$code])->first()
+                ?? Role::whereRaw('LOWER(name) = ?', [$code])->first();
+
+            if ($role) {
+                if ($role->slug === 'admin' || ($creatorRoleId && $role->id === $creatorRoleId)) {
+                    continue;
+                }
+
+                $resolvedAreas[$role->slug] = [
+                    'code' => $role->slug,
+                    'name' => $role->name,
+                    'role_id' => $role->id,
                 ];
             } else {
-                $role = Role::whereRaw('LOWER(slug) = ?', [$code])->first()
-                    ?? Role::whereRaw('LOWER(name) = ?', [$code])->first();
-                if ($role) {
-                    $resolvedAreas[] = [
-                        'code' => $role->slug,
-                        'name' => $role->name,
-                        'role_id' => $role->id,
-                    ];
-                } else {
-                    $resolvedAreas[] = [
-                        'code' => $code,
-                        'name' => strtoupper($code),
-                        'role_id' => null,
-                    ];
-                }
+                $resolvedAreas[$code] = [
+                    'code' => $code,
+                    'name' => strtoupper($code),
+                    'role_id' => null,
+                ];
             }
         }
 
-        // Si por alguna razón la lista de áreas quedó vacía, asignar GTS por defecto
+        $resolvedAreas = array_values($resolvedAreas);
+
+        // Si la lista de áreas quedó vacía, asignar GTS por defecto si no es el creador
         if (empty($resolvedAreas)) {
             $gtsRole = Role::where('slug', 'gts')->first();
             $resolvedAreas[] = [
@@ -242,12 +248,12 @@ class IncidentService
                 );
             }
 
-            // B. Sincronizar tabla incident_assigned_areas
+            // B. Sincronizar tabla incident_assigned_areas evitando colisiones
             $incident->assignedAreas()->delete();
             foreach ($resolvedAreas as $area) {
                 $incident->assignedAreas()->create([
                     'area_code' => $area['code'],
-                    'area_name' => $area['name'],
+                    'area_name' => mb_substr($area['name'], 0, 100),
                     'role_id' => $area['role_id'],
                 ]);
             }
@@ -258,11 +264,7 @@ class IncidentService
                 $incident->assigned_specialist = null;
             } else {
                 $incident->assigned_to_user_id = null;
-                if (count($resolvedAreas) === 1 && $resolvedAreas[0]['code'] === 'tics') {
-                    $incident->assigned_specialist = 'TICS';
-                } else {
-                    $incident->assigned_specialist = $areaLabels;
-                }
+                $incident->assigned_specialist = mb_substr($areaLabels, 0, 50);
             }
 
             if (is_null($incident->assigned_at)) {
@@ -581,12 +583,21 @@ class IncidentService
 
     /**
      * Retorna los especialistas o técnicos disponibles para asignación según los alcances operativos del usuario.
+     * Excluye estrictamente usuarios con rol Administrador y usuarios del rol que originó la incidencia.
      *
      * @return Collection<int, User>
      */
-    public function getAvailableTechnicians(?User $user = null): Collection
+    public function getAvailableTechnicians(?User $user = null, ?Incident $incident = null): Collection
     {
-        $query = User::where('is_active', true)->with('role')->orderBy('name', 'asc');
+        $query = User::where('is_active', true)
+            ->whereHas('role', fn ($rq) => $rq->where('slug', '!=', 'admin'))
+            ->with('role')
+            ->orderBy('name', 'asc');
+
+        $creatorRoleId = $incident?->reportedBy?->role_id;
+        if ($creatorRoleId) {
+            $query->where('role_id', '!=', $creatorRoleId);
+        }
 
         if ($user) {
             $assignableRoleIds = $user->assignableRoleIds();

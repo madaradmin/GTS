@@ -719,15 +719,19 @@
         <!-- 4. Modal de Asignación / Reasignación de Especialista y Áreas Responsables -->
         @can('assign', $incident)
         @php
-            $initialAreas = $incident->assignedAreaCodes();
+            $creatorSlug = strtolower($incident->reportedBy?->role?->slug ?? '');
+            $initialAreas = array_values(array_filter(
+                array_map('strtolower', $incident->assignedAreaCodes()), 
+                fn($c) => $c !== 'tics' && $c !== 'admin' && ($creatorSlug === '' || $c !== $creatorSlug)
+            ));
             if (empty($initialAreas)) {
-                if ($incident->isAssignedToTics()) {
-                    $initialAreas = ['tics'];
-                } elseif ($incident->assignedTo && $incident->assignedTo->role) {
+                if ($incident->assignedTo && $incident->assignedTo->role && $incident->assignedTo->role->slug !== 'admin' && $incident->assignedTo->role_id !== $incident->reportedBy?->role_id) {
                     $initialAreas = [$incident->assignedTo->role->slug];
                 }
             }
-            $initialUserId = $incident->assigned_to_user_id ? (string) $incident->assigned_to_user_id : '';
+            $initialUserId = ($incident->assigned_to_user_id && ! $incident->assignedTo?->isAdmin() && $incident->assignedTo?->role_id !== $incident->reportedBy?->role_id) 
+                ? (string) $incident->assigned_to_user_id 
+                : '';
             $availableAreasList = ($availableAreas ?? collect())->values()->all();
             $availableTechniciansList = ($availableTechnicians ?? collect())->map(function($tech) {
                 return [
@@ -749,6 +753,7 @@
                 selectedUserId: '{{ $initialUserId }}',
                 areaToAdd: '',
                 isSubmitting: false,
+                errorMessage: '',
 
                 get filteredTechnicians() {
                     if (this.selectedAreas.length === 0) return [];
@@ -768,12 +773,14 @@
                         this.selectedAreas.push(cleanCode);
                     }
                     this.areaToAdd = '';
+                    this.errorMessage = '';
                 },
 
                 removeArea(code) {
                     const cleanCode = code.toLowerCase();
                     this.selectedAreas = this.selectedAreas.filter(a => a.toLowerCase() !== cleanCode);
                     this.validateSelectedUser();
+                    this.errorMessage = '';
                 },
 
                 validateSelectedUser() {
@@ -794,6 +801,44 @@
                         badge_text: 'text-on-surface',
                         badge_border: 'border-border-subtle'
                     };
+                },
+
+                async submitAssignment() {
+                    if (this.selectedAreas.length === 0 || this.isSubmitting) return;
+                    this.isSubmitting = true;
+                    this.errorMessage = '';
+
+                    try {
+                        const form = this.$refs.assignForm;
+                        const formData = new FormData(form);
+
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            const data = await response.json().catch(() => null);
+                            if (response.status === 422 && data?.errors) {
+                                const errorMessages = Object.values(data.errors).flat();
+                                this.errorMessage = errorMessages[0] || 'Error de validación al asignar la incidencia.';
+                            } else {
+                                this.errorMessage = data?.message || 'Ocurrió un error al procesar la asignación.';
+                            }
+                            return;
+                        }
+
+                        // Éxito: recargar la vista para reflejar el estado táctico actualizado
+                        window.location.reload();
+                    } catch (error) {
+                        this.errorMessage = 'Error de conectividad al enviar la solicitud. Por favor intente nuevamente.';
+                    } finally {
+                        this.isSubmitting = false;
+                    }
                 }
             }"
             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-base/80 backdrop-blur-sm"
@@ -808,7 +853,7 @@
                         <span class="material-symbols-outlined text-primary text-[24px]">device_hub</span>
                         <div>
                             <h3 class="text-base font-bold text-on-surface">
-                                {{ ($incident->assignedTo || $incident->isAssignedToTics() || $incident->assignedAreas->isNotEmpty()) ? 'Reasignar Especialista y Áreas' : 'Asignar Especialista y Áreas' }}
+                                {{ ($incident->assignedTo || $incident->assignedAreas->isNotEmpty()) ? 'Reasignar Especialista y Áreas' : 'Asignar Especialista y Áreas' }}
                             </h3>
                             <p class="text-[11px] text-outline">Gestione las áreas responsables y asigne opcionalmente un especialista técnico.</p>
                         </div>
@@ -822,8 +867,14 @@
                     </button>
                 </div>
 
-                <form method="POST" action="{{ route('incidents.assign', $incident) }}" class="flex flex-col gap-4" @submit="isSubmitting = true">
+                <form x-ref="assignForm" method="POST" action="{{ route('incidents.assign', $incident) }}" class="flex flex-col gap-4" @submit.prevent="submitAssignment()">
                     @csrf
+
+                    <!-- Alerta de Error en caso de falla de validación o servidor -->
+                    <div x-show="errorMessage" x-cloak class="p-3 rounded-xl bg-status-critical/10 border border-status-critical/30 text-status-critical text-xs flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] shrink-0">error</span>
+                        <span x-text="errorMessage"></span>
+                    </div>
 
                     <!-- Inputs Ocultos de Áreas Seleccionadas -->
                     <template x-for="code in selectedAreas" :key="code">
@@ -854,9 +905,9 @@
                                         type="button"
                                         @click="removeArea(code)"
                                         title="Retirar área"
-                                        class="hover:opacity-75 transition-opacity ml-0.5 text-current"
+                                        class="hover:opacity-75 transition-opacity ml-1 p-0.5 rounded-full hover:bg-black/20 text-current flex items-center justify-center shrink-0"
                                     >
-                                        <span class="material-symbols-outlined text-[14px] leading-none">close</span>
+                                        <span class="material-symbols-outlined text-[13px] leading-none">close</span>
                                     </button>
                                 </span>
                             </template>
@@ -875,16 +926,16 @@
                                 <select
                                     x-model="areaToAdd"
                                     @change="addArea(areaToAdd)"
-                                    class="w-full appearance-none px-3 py-2 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-8 cursor-pointer shadow-inner"
+                                    class="w-full bg-none appearance-none px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-9 cursor-pointer shadow-inner disabled:opacity-60 disabled:cursor-not-allowed"
                                     :disabled="unselectedAreas.length === 0"
                                 >
-                                    <option value="" x-text="unselectedAreas.length === 0 ? 'Todas las áreas autorizadas ya han sido agregadas' : '+ Agregar otra área autorizada...'"></option>
+                                    <option value="" x-text="unselectedAreas.length === 0 ? 'Todas las áreas autorizadas ya han sido agregadas' : '-- Seleccionar área para agregar --'"></option>
                                     <template x-for="area in unselectedAreas" :key="area.code">
                                         <option :value="area.code" x-text="area.name"></option>
                                     </template>
                                 </select>
-                                <span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
-                                    add_circle
+                                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none select-none">
+                                    expand_more
                                 </span>
                             </div>
                         </div>
@@ -916,31 +967,27 @@
                                 name="assigned_to_user_id"
                                 x-model="selectedUserId"
                                 :disabled="filteredTechnicians.length === 0 || selectedAreas.length === 0"
-                                class="w-full appearance-none px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-9 cursor-pointer shadow-inner disabled:opacity-60 disabled:cursor-not-allowed"
+                                class="w-full bg-none appearance-none px-3.5 py-2.5 bg-surface-container-low border border-border-subtle rounded-xl text-xs text-on-surface focus:outline-none focus:border-border-focus transition-colors pr-9 cursor-pointer shadow-inner disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                                <template x-if="selectedAreas.length === 0">
-                                    <option value="">-- Primero seleccione al menos un área responsable --</option>
-                                </template>
-
-                                <template x-if="selectedAreas.length > 0 && filteredTechnicians.length === 0">
-                                    <option value="">-- Las áreas seleccionadas no cuentan con especialistas individuales --</option>
-                                </template>
-
-                                <template x-if="selectedAreas.length > 0 && filteredTechnicians.length > 0">
-                                    <option value="">-- Sin usuario asignado (asignar solo a nivel de área) --</option>
-                                </template>
+                                <option value="" x-text="
+                                    selectedAreas.length === 0 
+                                        ? '-- Primero seleccione al menos un área responsable --' 
+                                        : (filteredTechnicians.length === 0 
+                                            ? '-- Las áreas seleccionadas no cuentan con especialistas individuales --' 
+                                            : '-- Sin usuario asignado (asignar solo a nivel de área) --')
+                                "></option>
 
                                 <template x-for="tech in filteredTechnicians" :key="tech.id">
                                     <option :value="tech.id" x-text="'[' + tech.role_name + '] ' + tech.name + ' (' + tech.badge + ')'"></option>
                                 </template>
                             </select>
-                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">
+                            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none select-none">
                                 expand_more
                             </span>
                         </div>
 
                         <p class="text-[11px] text-outline" x-show="selectedAreas.length > 0 && filteredTechnicians.length === 0">
-                            * El destino seleccionado (ej. TICS o área externa) operará sin asignación individual de técnico.
+                            * Las áreas seleccionadas operarán sin asignación individual de técnico.
                         </p>
                     </div>
 

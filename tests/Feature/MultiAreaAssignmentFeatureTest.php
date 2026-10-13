@@ -116,11 +116,12 @@ class MultiAreaAssignmentFeatureTest extends TestCase
     public function test_escenario_3_asignacion_a_varias_areas_sin_usuario(): void
     {
         $incident = Incident::factory()->nueva()->create();
+        $cctvRole = Role::firstOrCreate(['slug' => 'cctv'], ['name' => 'CCTV']);
 
         $response = $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
-            'areas' => ['gts', 'tics'],
+            'areas' => ['gts', 'cctv'],
             'assigned_to_user_id' => null,
-            'comment' => 'Coordinación conjunta GTS y TICS para mantenimiento de switch.',
+            'comment' => 'Coordinación conjunta GTS y CCTV para mantenimiento.',
         ]);
 
         $response->assertRedirect(route('incidents.show', $incident->folio));
@@ -130,7 +131,7 @@ class MultiAreaAssignmentFeatureTest extends TestCase
         $this->assertEquals('ASIGNADA', $incident->status->code);
         $this->assertNull($incident->assigned_to_user_id);
         $this->assertTrue($incident->isAssignedToArea('gts'));
-        $this->assertTrue($incident->isAssignedToArea('tics'));
+        $this->assertTrue($incident->isAssignedToArea('cctv'));
         $this->assertCount(2, $incident->assignedAreas);
 
         $this->assertDatabaseHas('incident_assigned_areas', [
@@ -139,7 +140,7 @@ class MultiAreaAssignmentFeatureTest extends TestCase
         ]);
         $this->assertDatabaseHas('incident_assigned_areas', [
             'incident_id' => $incident->id,
-            'area_code' => 'tics',
+            'area_code' => 'cctv',
         ]);
     }
 
@@ -149,11 +150,12 @@ class MultiAreaAssignmentFeatureTest extends TestCase
     public function test_escenario_4_asignacion_a_varias_areas_con_usuario_compatible(): void
     {
         $incident = Incident::factory()->nueva()->create();
+        $cctvRole = Role::firstOrCreate(['slug' => 'cctv'], ['name' => 'CCTV']);
 
         $response = $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
-            'areas' => ['gts', 'tics'],
+            'areas' => ['gts', 'cctv'],
             'assigned_to_user_id' => $this->gtsUser1->id,
-            'comment' => 'GTS coordina con apoyo externo de TICS.',
+            'comment' => 'GTS coordina con apoyo de CCTV.',
         ]);
 
         $response->assertRedirect(route('incidents.show', $incident->folio));
@@ -163,7 +165,7 @@ class MultiAreaAssignmentFeatureTest extends TestCase
         $this->assertEquals('ASIGNADA', $incident->status->code);
         $this->assertEquals($this->gtsUser1->id, $incident->assigned_to_user_id);
         $this->assertTrue($incident->isAssignedToArea('gts'));
-        $this->assertTrue($incident->isAssignedToArea('tics'));
+        $this->assertTrue($incident->isAssignedToArea('cctv'));
         $this->assertCount(2, $incident->assignedAreas);
 
         $this->assertDatabaseHas('incident_histories', [
@@ -198,10 +200,11 @@ class MultiAreaAssignmentFeatureTest extends TestCase
     public function test_rechazo_asignacion_a_usuario_incompatible_con_areas_seleccionadas(): void
     {
         $incident = Incident::factory()->nueva()->create();
+        $cctvRole = Role::firstOrCreate(['slug' => 'cctv'], ['name' => 'CCTV']);
 
-        // Se selecciona únicamente el área 'tics', pero se envía un usuario con rol 'gts'
+        // Se selecciona únicamente el área 'cctv', pero se envía un usuario con rol 'gts'
         $response = $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
-            'areas' => ['tics'],
+            'areas' => ['cctv'],
             'assigned_to_user_id' => $this->gtsUser1->id,
         ]);
 
@@ -215,6 +218,8 @@ class MultiAreaAssignmentFeatureTest extends TestCase
      */
     public function test_reasignacion_actualiza_areas_y_mantiene_historial(): void
     {
+        $cctvRole = Role::firstOrCreate(['slug' => 'cctv'], ['name' => 'CCTV']);
+
         // 1. Incidencia asignada inicialmente a GTS con técnico
         $incident = Incident::factory()->asignada($this->gtsUser1)->create();
         $incident->assignedAreas()->create([
@@ -223,11 +228,11 @@ class MultiAreaAssignmentFeatureTest extends TestCase
             'role_id' => $this->gtsUser1->role_id,
         ]);
 
-        // 2. Reasignación a TICS sin usuario
-        $response = $this->actingAs($this->gtsUser1)->post(route('incidents.assign', $incident), [
-            'areas' => ['tics'],
+        // 2. Reasignación a CCTV sin usuario
+        $response = $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
+            'areas' => ['cctv'],
             'assigned_to_user_id' => null,
-            'comment' => 'Derivando a TICS por tratarse de problema de fibra externa.',
+            'comment' => 'Derivando a CCTV por verificación de cámaras.',
         ]);
 
         $response->assertRedirect(route('incidents.show', $incident->folio));
@@ -235,16 +240,29 @@ class MultiAreaAssignmentFeatureTest extends TestCase
 
         $incident->refresh();
         $this->assertNull($incident->assigned_to_user_id);
-        $this->assertTrue($incident->isAssignedToTics());
         $this->assertFalse($incident->isAssignedToArea('gts'));
-        $this->assertTrue($incident->isAssignedToArea('tics'));
+        $this->assertTrue($incident->isAssignedToArea('cctv'));
 
         $this->assertDatabaseHas('incident_histories', [
             'incident_id' => $incident->id,
             'action' => 'REASIGNADA',
             'old_value' => $this->gtsUser1->name,
-            'new_value' => 'TICS',
+            'new_value' => 'CCTV',
         ]);
+    }
+
+    /**
+     * Restricción: El área TICS es rechazada estrictamente para asignación.
+     */
+    public function test_rechazo_estricto_asignacion_a_area_tics(): void
+    {
+        $incident = Incident::factory()->nueva()->create();
+
+        $response = $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
+            'areas' => ['tics'],
+        ]);
+
+        $response->assertSessionHasErrors('areas.0');
     }
 
     /**

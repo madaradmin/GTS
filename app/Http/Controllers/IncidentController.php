@@ -164,8 +164,8 @@ class IncidentController extends Controller
         ]);
 
         $currentUser = request()->user();
-        $availableAreas = $this->incidentService->getAssignableAreas($currentUser);
-        $availableTechnicians = $this->incidentService->getAvailableTechnicians($currentUser);
+        $availableAreas = $this->incidentService->getAssignableAreas($currentUser, $incident);
+        $availableTechnicians = $this->incidentService->getAvailableTechnicians($currentUser, $incident);
         $gtsUsers = $availableTechnicians;
 
         return view('incidents.show', compact('incident', 'gtsUsers', 'availableAreas', 'availableTechnicians'));
@@ -174,7 +174,7 @@ class IncidentController extends Controller
     /**
      * Asigna o reasigna áreas responsables y un especialista técnico a la incidencia.
      */
-    public function assign(AssignIncidentRequest $request, Incident $incident): RedirectResponse
+    public function assign(AssignIncidentRequest $request, Incident $incident): RedirectResponse|\Illuminate\Http\JsonResponse
     {
         Gate::authorize('assign', $incident);
 
@@ -199,12 +199,18 @@ class IncidentController extends Controller
             $message = $isSelfAssign
                 ? "Has tomado la responsabilidad técnica de la incidencia {$incident->folio}."
                 : "Incidencia {$incident->folio} asignada al especialista {$technician->name} exitosamente.";
-        } elseif (count($areas) === 1 && strtolower($areas[0]) === 'tics') {
-            $message = "Incidencia {$incident->folio} asignada al especialista TICS exitosamente.";
         } else {
             $areaNames = $incident->fresh()->assignedAreaNames();
             $label = ! empty($areaNames) ? implode(', ', $areaNames) : 'las áreas seleccionadas';
             $message = "Incidencia {$incident->folio} asignada exitosamente al área responsable: {$label}.";
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'folio' => $incident->folio,
+            ]);
         }
 
         return redirect()->route('incidents.show', $incident->folio)

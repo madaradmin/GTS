@@ -56,7 +56,7 @@ class TicsSpecialistAssignmentPhase4Test extends TestCase
         );
     }
 
-    public function test_admin_can_assign_incident_to_tics(): void
+    public function test_admin_cannot_assign_incident_to_tics(): void
     {
         $incident = Incident::factory()->nueva()->create();
 
@@ -65,27 +65,12 @@ class TicsSpecialistAssignmentPhase4Test extends TestCase
             'comment' => 'Derivado a TICS por tratarse de problema de enlace externo.',
         ]);
 
-        $response->assertRedirect(route('incidents.show', $incident->folio));
-        $response->assertSessionHas('success');
-
+        $response->assertSessionHasErrors('areas.0');
         $incident->refresh();
-        $this->assertTrue($incident->isAssignedToTics());
-        $this->assertEquals('TICS', $incident->assigned_specialist);
-        $this->assertNull($incident->assigned_to_user_id);
-        $this->assertNotNull($incident->assigned_at);
-        $this->assertEquals('ASIGNADA', $incident->status->code);
-
-        // Verificar registro inmutable en auditoría
-        $this->assertDatabaseHas('incident_histories', [
-            'incident_id' => $incident->id,
-            'user_id' => $this->admin->id,
-            'action' => 'ASIGNADA',
-            'field_name' => 'assigned_specialist',
-            'new_value' => 'TICS',
-        ]);
+        $this->assertEquals('NUEVA', $incident->status->code);
     }
 
-    public function test_gts_can_assign_incident_to_tics(): void
+    public function test_gts_cannot_assign_incident_to_tics(): void
     {
         $incident = Incident::factory()->nueva()->create();
 
@@ -93,12 +78,9 @@ class TicsSpecialistAssignmentPhase4Test extends TestCase
             'assigned_to_user_id' => 'tics',
         ]);
 
-        $response->assertRedirect(route('incidents.show', $incident->folio));
-        $response->assertSessionHas('success');
-
+        $response->assertSessionHasErrors('areas.0');
         $incident->refresh();
-        $this->assertTrue($incident->isAssignedToTics());
-        $this->assertEquals('TICS', $incident->specialist_name);
+        $this->assertEquals('NUEVA', $incident->status->code);
     }
 
     public function test_apoc_cco_and_apoc_csa_cannot_assign_tics(): void
@@ -152,25 +134,26 @@ class TicsSpecialistAssignmentPhase4Test extends TestCase
         $response->assertSee('Especialista de Atención');
     }
 
-    public function test_reassignment_between_tics_and_gts_user(): void
+    public function test_reassignment_from_historical_tics_to_gts_user(): void
     {
-        $incident = Incident::factory()->nueva()->create();
-
-        // 1. Asignar primero a TICS
-        $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
-            'assigned_to_user_id' => 'tics',
-            'comment' => 'Asignado a TICS inicialmente',
+        // 1. Incidencia históricamente asignada a TICS
+        $incident = Incident::factory()->nueva()->create([
+            'assigned_specialist' => 'TICS',
+            'assigned_to_user_id' => null,
+            'assigned_at' => now(),
+            'status_id' => Status::where('code', 'ASIGNADA')->firstOrFail()->id,
         ]);
 
-        $incident->refresh();
         $this->assertTrue($incident->isAssignedToTics());
 
         // 2. Reasignar de TICS a un técnico GTS (Roberto Morales)
-        $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
+        $response = $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
+            'areas' => ['gts'],
             'assigned_to_user_id' => $this->gts->id,
             'comment' => 'Reasignado a GTS para intervención local',
         ]);
 
+        $response->assertRedirect(route('incidents.show', $incident->folio));
         $incident->refresh();
         $this->assertFalse($incident->isAssignedToTics());
         $this->assertNull($incident->assigned_specialist);
@@ -183,22 +166,11 @@ class TicsSpecialistAssignmentPhase4Test extends TestCase
             'new_value' => $this->gts->name,
         ]);
 
-        // 3. Reasignar nuevamente de GTS a TICS
-        $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
-            'assigned_to_user_id' => 'tics',
-            'comment' => 'Regresado a TICS para escalamiento de fibra',
+        // 3. Intentar reasignar de nuevo a TICS es rechazado
+        $responseFail = $this->actingAs($this->admin)->post(route('incidents.assign', $incident), [
+            'areas' => ['tics'],
         ]);
-
-        $incident->refresh();
-        $this->assertTrue($incident->isAssignedToTics());
-        $this->assertNull($incident->assigned_to_user_id);
-
-        $this->assertDatabaseHas('incident_histories', [
-            'incident_id' => $incident->id,
-            'action' => 'REASIGNADA',
-            'old_value' => $this->gts->name,
-            'new_value' => 'TICS',
-        ]);
+        $responseFail->assertSessionHasErrors('areas.0');
     }
 
     public function test_tics_is_not_a_role_and_not_a_user(): void
